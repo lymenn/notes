@@ -283,8 +283,8 @@ class MyPromise{
     // 接收一个成功的回调和一个失败的回调，并push进对应的队列
     then(resolveFn, rejectFn){
         // 根据规范，如果then的参数不是function，则我们需要忽略它，让链式调用继续往下执行
-        typeof resolveFn !== 'funciton' ? resolveFn = val => val : null
-        typeof rejectFn !== 'funciton' ? rejectFn = reason => {
+        typeof resolveFn !== 'function' ? resolveFn = val => val : null
+        typeof rejectFn !== 'function' ? rejectFn = reason => {
             throw new Error(reason instanceof Error ? reason.message : reason)
         } : null
         // return 一个新的Promise
@@ -294,7 +294,6 @@ class MyPromise{
                 try{
 
                     let x = resolveFn(val)
-                    console.log(x,'x')
                     x instanceof MyPromise ? x.then(resolve, reject) : resolve(x)
                 } catch(error){
                     reject(error)
@@ -309,7 +308,6 @@ class MyPromise{
                     reject(error)
                 }
             }
-            console.log(this._status, 'status')
             switch(this._status){
             case PENDING:
                 this._rejectQueue.push(rejectedFn)
@@ -317,7 +315,6 @@ class MyPromise{
                 break;
             // 当状态已经变为resolve/reject时,直接执行then回调
             case FULFILLED:
-                console.log(333,this._value)
                 fulfilledFn(this._value); // this._value是上一个then回调return的值
                 break;
             case REJECTED:
@@ -327,16 +324,8 @@ class MyPromise{
         })
     }
 }
-let p1 = new MyPromise((resolve, reject) => {
-  resolve(1)          //同步executor测试
-})
-
-p1
-  .then(res => {
-    console.log(res)
-    return 2          //链式调用测试
-  })
 ```
+然后我们可以测试这个Promise:
 ```js
 let p1 = new MyPromise((resolve, reject) => {
   resolve(1)          //同步executor测试
@@ -368,4 +357,90 @@ p1
 // 3 
 // Error: reject测试
 
+```
+## Promise.prototype.catch()
+>catch()方法返回一个Promise,并且处理拒绝的情况，它的情况与调用Promise.prototype.then(undefined, onRejected)相同
+```js
+// catch方法其实就是执行一下then方法的第二个回调
+catch(rejectFn){
+    return this.then(undefined, rejectFn)
+}  
+```
+## Promise.prototype.finally()
+> finally()方法返回一个Promise.在Promise结束时，无论结果是fulfilled或者是rejected,都会执行指定的回调函数。在finally之后，还可以继续then.并且会将值原封不动的传给后面的then.
+```js
+//finally方法
+finally(callback) {
+  return this.then(
+    value => MyPromise.resolve(callback()).then(() => value),             // MyPromise.resolve执行回调,并在then中return结果传递给后面的Promise
+    reason => MyPromise.resolve(callback()).then(() => { throw reason })  // reject同理
+  )
+}
+
+```
+## Promise.resolve()
+> Promise.resolve(value)方法返回一个以给定值解析后的Promise对象。如果该值为Promise,返回这个Promise;如果这个值是thenable（即带有"then" 方法)），返回的promise会“跟随”这个thenable的对象，采用它的最终状态；否则返回的promise将以此值完成。此函数将类promise对象的多层嵌套展平
+```js
+// 静态的resolve方法
+static resolve(value){
+    if(value instanceof MyPromise) return value //根据规范，参数如果是Promise实例，直接return这个实例
+    return new MyPromise(resolve => resolve(value))
+}
+```
+## Promise.reject()
+>Promise.reject()返回一个带有拒绝原因的Promise对象
+```js
+static reject(reason){
+    return new Promise((resolve, reject) => {
+        reject(reason)
+    })
+}
+```
+## Promise.all()
+>Promise.all(iterable)方法返回一个Promise实例，此实例在iterable参数内所有的promise都resolved或参数中不包含promise时resolve;如果参数中promise有一个rejected，此实例reject,失败原因是第一个失败Promise的结果
+```js
+// 静态的all方法
+static all(promiseArr){
+    let index = 0
+    let result = []
+    return new MyPromise((resolve, reject) => {
+        promiseArr.forEach((p,i) => {
+            //Promise.resolve用于处理传入值不为Promise的情况
+            MyPromise.resolve(p).then(
+                val => {
+                    index++
+                    result[i] = val
+                    //所有then执行后，resolve结果
+                    if(index === promiseArr.length){
+                        resolve(result)
+                    }
+                },
+                err => {
+                    //有一个promise被reject时，MyPromise的状态reject
+                    reject(err)
+                }
+            )
+        })
+    })
+}
+```
+## Promise.race()
+> Promise.race(iterable)方法返回一个Promise,一旦迭代器中的某个Promise解决或者拒绝，返回的Promise就会解决或拒绝
+```js
+static race(promiseArr){
+    return new MyPromise((resolve, reject) => {
+        //同时执行Promise,如果有一个Promise的状态发生改变,就变更新MyPromise的状态
+        for(let p of promiseArr){
+            //Promise.resolve(p)用于处理传入值不为Promise的情况
+            MyPromise.resolve(p).then(
+                val => {
+                    resolve(value) //注意这个resolve是上边new MyPromise的
+                },
+                err => {
+                    reject(err)
+                }
+            )
+        }
+    })
+}
 ```
