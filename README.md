@@ -1,4 +1,6 @@
 # notes
+优质博客主  
+前端儿:https://cloud.tencent.com/developer/column/5114  
 https://www.doyoudo.com/  
 我要自学网  
 xmind
