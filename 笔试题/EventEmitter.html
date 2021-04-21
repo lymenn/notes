@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    
+</body>
+<script src="./js/EventEmitter.js"></script>
+<script>
+    let event = new EventEmitter();
+    let e = ['click', 'hover', 'dhclick']
+    event.on(e, function(name){
+        console.log(name)
+    })
+    function say(name){
+        console.log(name+'mememda')
+    }
+    event.emit('click', 'hello click')
+    event.emit('hover', 'hello hover')
+    event.emit('dhclick', 'hello dhclick')
+    event.once('say', say)
+    console.log(event);
+</script>
+</html>
