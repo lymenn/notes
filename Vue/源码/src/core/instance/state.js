@@ -46,6 +46,7 @@ export function proxy (target: Object, sourceKey: string, key: string) {
 }
 
 export function initState (vm: Component) {
+  // 保存当前组件的watcher实例。无论是$watch注册的watcher实例，还是watch选项注册的watcher实例，都会添加到当前实例的_watchers属性中
   vm._watchers = []
   const opts = vm.$options
   if (opts.props) initProps(vm, opts.props)
@@ -74,6 +75,7 @@ function initProps (vm: Component, propsOptions: Object) {
   }
   for (const key in propsOptions) {
     keys.push(key)
+    // 获取key对应的value值
     const value = validateProp(key, propsOptions, propsData, vm)
     /* istanbul ignore else */
     if (process.env.NODE_ENV !== 'production') {
@@ -103,6 +105,7 @@ function initProps (vm: Component, propsOptions: Object) {
     // during Vue.extend(). We only need to proxy props defined at
     // instantiation here.
     if (!(key in vm)) {
+      // 设置代理 当使用vm[key] 访问数据时，其实访问的是vm.props[key]
       proxy(vm, `_props`, key)
     }
   }
@@ -148,6 +151,7 @@ function initData (vm: Component) {
     }
   }
   // observe data
+  // 将数据转换为响应式的
   observe(data, true /* asRootData */)
 }
 

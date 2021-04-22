@@ -13,8 +13,10 @@ export function initEvents (vm: Component) {
   vm._events = Object.create(null)
   vm._hasHookEvent = false
   // init parent attached events
+  // 父组件向子组件注册的事件
   const listeners = vm.$options._parentListeners
   if (listeners) {
+    //将父组件向子组件注册的事件注册到子组件实例中
     updateComponentListeners(vm, listeners)
   }
 }

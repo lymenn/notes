@@ -62,9 +62,10 @@ export function updateListeners (
   for (name in on) {
     def = cur = on[name]
     old = oldOn[name]
+    // 规格化事件,即解析出注册事件的修饰符
     event = normalizeEvent(name)
     /* istanbul ignore if */
-    if (__WEEX__ && isPlainObject(def)) {
+    if (__WEEX__ && isPlainObject(def)) { 
       cur = def.handler
       event.params = def.params
     }

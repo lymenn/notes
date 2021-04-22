@@ -14,9 +14,12 @@ export function initProvide (vm: Component) {
 }
 
 export function initInjections (vm: Component) {
+  // 通过用户配置的inject, 自底向上搜索可用的注入内容，并将结果以{key:value}的形式返回
   const result = resolveInject(vm.$options.inject, vm)
   if (result) {
+    // 通知defineReactive函数不要将内容转换成响应式的
     toggleObserving(false)
+    // 循环result并依次调用defineReactive函数，将他们设置为当前实例上
     Object.keys(result).forEach(key => {
       /* istanbul ignore else */
       if (process.env.NODE_ENV !== 'production') {
@@ -48,13 +51,16 @@ export function resolveInject (inject: any, vm: Component): ?Object {
       const key = keys[i]
       // #6574 in case the inject object is observed...
       if (key === '__ob__') continue
+      // 获取原源属性的键名
       const provideKey = inject[key].from
       let source = vm
       while (source) {
         if (source._provided && hasOwn(source._provided, provideKey)) {
+          // 通过provide注入内容时，其实是将内容注入到当前实例的_provided中，所以可以从父组件的_provided中获取注入内容
           result[key] = source._provided[provideKey]
           break
         }
+        // 将source设置为父组件实例进行下一轮循环
         source = source.$parent
       }
       if (!source) {
