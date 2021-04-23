@@ -49,7 +49,11 @@ export function initState (vm: Component) {
   // 保存当前组件的watcher实例。无论是$watch注册的watcher实例，还是watch选项注册的watcher实例，都会添加到当前实例的_watchers属性中
   vm._watchers = []
   const opts = vm.$options
+  // 初始化props: 通过规格化后的opts.props，从父组件传入的props数据中或从new创建实例
+  // 传入的propsData参数中，查找出需要的数据保存在当前实例的vm._props中，然后在vm上设置一个代理
+  // 实现通过vm.x 访问vm._props.x的目的
   if (opts.props) initProps(vm, opts.props)
+  // 初始化methods: 使我们可以通过vm[x] 访问到opts.methods[x]方法
   if (opts.methods) initMethods(vm, opts.methods)
   if (opts.data) {
     initData(vm)
@@ -114,6 +118,7 @@ function initProps (vm: Component, propsOptions: Object) {
 
 function initData (vm: Component) {
   let data = vm.$options.data
+  // 判断data的类型：如果是函数，则需要执行函数，并将其返回值赋值给data和vm._data
   data = vm._data = typeof data === 'function'
     ? getData(data, vm)
     : data || {}
@@ -130,8 +135,10 @@ function initData (vm: Component) {
   const props = vm.$options.props
   const methods = vm.$options.methods
   let i = keys.length
+  // 将data中的所有属性代理到实例的vm._data中对应的属性
   while (i--) {
     const key = keys[i]
+    // 如果某个key与methods中的方法重名,依然会代理到实例中，但是在非生产环境中会发出警告
     if (process.env.NODE_ENV !== 'production') {
       if (methods && hasOwn(methods, key)) {
         warn(
@@ -140,6 +147,7 @@ function initData (vm: Component) {
         )
       }
     }
+    // 如果某个key与props中的属性重名,则不会将代理到实例中
     if (props && hasOwn(props, key)) {
       process.env.NODE_ENV !== 'production' && warn(
         `The data property "${key}" is already declared as a prop. ` +
@@ -147,11 +155,12 @@ function initData (vm: Component) {
         vm
       )
     } else if (!isReserved(key)) {
+      // 在vm实例上设置名为vm.key的访问器属性，这个属性的修改和获取针对的vm._data中的同名属性
       proxy(vm, `_data`, key)
     }
   }
   // observe data
-  // 将数据转换为响应式的
+  // 将vm._data中的数据转换为响应式的
   observe(data, true /* asRootData */)
 }
 
@@ -266,6 +275,7 @@ function createGetterInvoker(fn) {
 function initMethods (vm: Component, methods: Object) {
   const props = vm.$options.props
   for (const key in methods) {
+    // 非生产环境校验methods并在控制台发出警告
     if (process.env.NODE_ENV !== 'production') {
       if (typeof methods[key] !== 'function') {
         warn(
@@ -287,6 +297,7 @@ function initMethods (vm: Component, methods: Object) {
         )
       }
     }
+    // 方法赋值到当前vm实例中：方法不存在，则保存一个空函数。存在,将方法bind当前vm实例，在赋值
     vm[key] = typeof methods[key] !== 'function' ? noop : bind(methods[key], vm)
   }
 }
