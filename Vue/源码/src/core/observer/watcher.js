@@ -23,6 +23,8 @@ let uid = 0
  * and fires callback when the expression value changes.
  * This is used for both the $watch() api and directives.
  */
+// 一个组件一个watcher(渲染watcher)或者一个表达式一个watcher(用户watcher)
+// 当数据更新时 watcher 会被处发，访问 this.computedProperty 时也会触发 watcher
 export default class Watcher {
   vm: Component;
   expression: string;
@@ -79,6 +81,9 @@ export default class Watcher {
     if (typeof expOrFn === 'function') {
       this.getter = expOrFn
     } else {
+      // this.getter = function(){ return 'xxx' }
+      // 在this.get中执行this.getter会触发依赖收集
+      // 待后续 this.xx更新时触发响应式
       this.getter = parsePath(expOrFn)
       if (!this.getter) {
         this.getter = noop
@@ -98,6 +103,11 @@ export default class Watcher {
   /**
    * Evaluate the getter, and re-collect dependencies.
    */
+  // 执行 this.getter, 并重新收集依赖
+  // this.getter是实例化watcher时传递的第二个参数，一个函数或者字符串。比如: updateComponent或者parsePath返回的读取this.xxx的函数
+  // 为什么要重新收集依赖?
+  // 因为触发更新说明响应式数据被更新了，但是被更新的数据虽然经过observer观察了, 但是没有收集依赖
+  // 所以，在更新页面时，会重新执行一次render函数，执行期间会触发读取操作，进行依赖收集
   get () {
     pushTarget(this)
     let value

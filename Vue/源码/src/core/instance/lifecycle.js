@@ -38,12 +38,14 @@ export function initLifecycle (vm: Component) {
     while (parent.$options.abstract && parent.$parent) {
       parent = parent.$parent
     }
+    // 当前组件主动添加到父组件中
     parent.$children.push(vm)
   }
-
+  // 第一个非抽象类型的父级
   vm.$parent = parent
+  // 根组件: 当前组件没有父组件，则他自己就是跟组件。如果有，就是父组件的根组件
   vm.$root = parent ? parent.$root : vm
-
+  // 当前实例的直接子组件，该属性的值是从子组件中主动添加到父组件中
   vm.$children = []
   vm.$refs = {}
 

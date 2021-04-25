@@ -10,10 +10,11 @@ import {
 import { updateListeners } from '../vdom/helpers/index'
 
 export function initEvents (vm: Component) {
+  // 新增_events属性，用来存储事件
   vm._events = Object.create(null)
   vm._hasHookEvent = false
   // init parent attached events
-  // 父组件向子组件注册的事件
+  // 获取父组件向子组件注册的事件
   const listeners = vm.$options._parentListeners
   if (listeners) {
     //将父组件向子组件注册的事件注册到子组件实例中
@@ -47,6 +48,9 @@ export function updateComponentListeners (
   oldListeners: ?Object
 ) {
   target = vm
+  // 对比新(listeners)老(oldListeners)事件的不同，并调用add和remove方法注册和卸载事件
+  // 如果listeners对象中，存在某个key(事件名)在oldListeners中不存在，那么这个事件需要添加到当前组件的事件系统中
+  // 如果oldListeners对象中，存在某个key(事件名)在listeners中不存在，那么这个事件需要从到当前组件的事件系统中移除
   updateListeners(listeners, oldListeners || {}, add, remove, createOnceHandler, vm)
   target = undefined
 }

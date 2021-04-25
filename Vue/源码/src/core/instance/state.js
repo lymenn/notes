@@ -328,6 +328,9 @@ function createWatcher (
   if (typeof handler === 'string') {
     handler = vm[handler]
   }
+  //expOrFn 表达式或计算属性函数
+  //handler watch对象的值
+  //options选项对象 {handler:function(){}, deep: true}
   return vm.$watch(expOrFn, handler, options)
 }
 

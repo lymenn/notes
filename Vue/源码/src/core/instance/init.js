@@ -13,6 +13,7 @@ import { extend, mergeOptions, formatComponentName } from '../util/index'
 let uid = 0
 
 export function initMixin (Vue: Class<Component>) {
+  // 初始化阶段
   Vue.prototype._init = function (options?: Object) {
     const vm: Component = this
     // a uid
@@ -49,16 +50,26 @@ export function initMixin (Vue: Class<Component>) {
     }
     // expose real self
     vm._self = vm
-    // 初始化实例属性 _开头的为内部使用属性, $开头的为外部使用属性
+    // 初始化实例属性 
+    // 为Vue实例设置属性并提供默认值.  _开头的为内部使用属性, $开头的为外部使用属性
     initLifecycle(vm)
+    // 初始化事件 vm._events
+    // 将父组件在模板中使用v-on注册的事件添加到子组件的事件系统中
+    // v-on写在组件标签上，这个事件会被注册到子组件的事件系统中
+    // v-on写在平台标签上, 这个事件会被注册到浏览器事件中
     initEvents(vm)
+    // 初始化渲染
+    // 解析组件的插槽信息，得到 vm.$slot，处理渲染函数，得到 vm.$createElement 方法，即 h 函数
     initRender(vm)
+    
     callHook(vm, 'beforeCreate')
     // 初始化Inject
     initInjections(vm) // resolve injections before data/props
     // 初始化状态
     initState(vm)
+    // 初始化provide
     initProvide(vm) // resolve provide after data/props
+    
     callHook(vm, 'created')
 
     /* istanbul ignore if */

@@ -34,6 +34,8 @@ export function toggleObserving (value: boolean) {
  * object's property keys into getter/setters that
  * collect dependencies and dispatch updates.
  */
+// 观察者类，会被附加到每个观察者实例上，value.__ob__ = this
+// 而对象的各个属性会被转换成getter/setter，并收集依赖和通知
 export class Observer {
   value: any;
   dep: Dep;
@@ -52,6 +54,7 @@ export class Observer {
       }
       this.observeArray(value)
     } else {
+      // value为对象，对象的每个属性都设置为响应式属性
       this.walk(value)
     }
   }
@@ -61,6 +64,7 @@ export class Observer {
    * getter/setters. This method should only be called when
    * value type is Object.
    */
+  // 遍历对象的每个key，为每个key设置响应式
   walk (obj: Object) {
     const keys = Object.keys(obj)
     for (let i = 0; i < keys.length; i++) {
@@ -71,6 +75,7 @@ export class Observer {
   /**
    * Observe a list of Array items.
    */
+  // 遍历数组, 为数组的每一项设置观察，处理数组元素为对象的情况
   observeArray (items: Array<any>) {
     for (let i = 0, l = items.length; i < l; i++) {
       observe(items[i])
@@ -107,6 +112,8 @@ function copyAugment (target: Object, src: Object, keys: Array<string>) {
  * returns the new observer if successfully observed,
  * or the existing observer if the value already has one.
  */
+// 响应式的入口
+// 为对象创建观察者实例， 如果对象已经被观察过， 则返回已有的观察者实例，否则创建新的观察者实例
 export function observe (value: any, asRootData: ?boolean): Observer | void {
   if (!isObject(value) || value instanceof VNode) {
     return
@@ -132,6 +139,7 @@ export function observe (value: any, asRootData: ?boolean): Observer | void {
 /**
  * Define a reactive property on an Object.
  */
+// 拦截 obj[key] 的读取和设置操作
 export function defineReactive (
   obj: Object,
   key: string,
@@ -139,37 +147,49 @@ export function defineReactive (
   customSetter?: ?Function,
   shallow?: boolean
 ) {
+  // 实例化一个dep， 一个key一个dep
   const dep = new Dep()
-
+  // 获取对象的属性描述符， 如果是不可配置的话直接return
   const property = Object.getOwnPropertyDescriptor(obj, key)
   if (property && property.configurable === false) {
     return
   }
 
   // cater for pre-defined getter/setters
+  // 记录getter和setter 获取val值
   const getter = property && property.get
   const setter = property && property.set
   if ((!getter || setter) && arguments.length === 2) {
     val = obj[key]
   }
-
+  // 递归调用， 处理val即obj[key]为对象的情况，保证对象中的所有key都被观察
   let childOb = !shallow && observe(val)
   Object.defineProperty(obj, key, {
     enumerable: true,
     configurable: true,
+    // get拦截对obj[key]的读取操作
     get: function reactiveGetter () {
       const value = getter ? getter.call(obj) : val
+      // Dep.target为Dep类的一个静态属性，值为watcher，实例化Watcher时会被设置
+      // 实例化watcher时会执行new Watcher时传递的回调函数
+      // 而回调函数中如果有vm.key的读取行为，会触发这里的 读取 拦截，进行依赖收集
+      // 回调函数执行完以后又会将Dep.target设置为null,避免这里重复收集
       if (Dep.target) {
+        // 依赖收集, 在dep中添加watcher，也在watcher中添加dep
         dep.depend()
+        // childOb 表示对象中嵌套对象的观察者对象，如果存在则对其依赖收集
         if (childOb) {
           childOb.dep.depend()
+          // 如果是 obj[key] 是 数组，则触发数组响应式
           if (Array.isArray(value)) {
+            // 为数组项为对象的项添加依赖
             dependArray(value)
           }
         }
       }
       return value
     },
+    // set拦截对obj[key]的设置操作
     set: function reactiveSetter (newVal) {
       const value = getter ? getter.call(obj) : val
       /* eslint-disable no-self-compare */
@@ -187,7 +207,9 @@ export function defineReactive (
       } else {
         val = newVal
       }
+      // 对新值进行观察，让新值也是响应式的
       childOb = !shallow && observe(newVal)
+      // 依赖通知更新
       dep.notify()
     }
   })
@@ -265,6 +287,8 @@ export function del (target: Array<any> | Object, key: any) {
  * Collect dependencies on array elements when the array is touched, since
  * we cannot intercept array element access like property getters.
  */
+// 遍历每个数组元素，递归处理数组项为对象的情况，为其添加依赖
+// 因为前面的递归阶段无法为数组中的元素添加依赖
 function dependArray (value: Array<any>) {
   for (let e, i = 0, l = value.length; i < l; i++) {
     e = value[i]

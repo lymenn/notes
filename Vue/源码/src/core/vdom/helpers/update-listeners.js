@@ -59,6 +59,7 @@ export function updateListeners (
   vm: Component
 ) {
   let name, def, cur, old, event
+  // 循环on，查找在oldOn中不存在的事件，调用add添加它
   for (name in on) {
     def = cur = on[name]
     old = oldOn[name]
@@ -69,6 +70,7 @@ export function updateListeners (
       cur = def.handler
       event.params = def.params
     }
+    // 为null或者undefined则发出警告
     if (isUndef(cur)) {
       process.env.NODE_ENV !== 'production' && warn(
         `Invalid handler for event "${event.name}": got ` + String(cur),
@@ -87,6 +89,7 @@ export function updateListeners (
       on[name] = old
     }
   }
+  // 循环oldOn, 查找中在on中不存在的事件，调用remove移除它
   for (name in oldOn) {
     if (isUndef(on[name])) {
       event = normalizeEvent(name)
