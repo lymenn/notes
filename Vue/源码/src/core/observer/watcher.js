@@ -137,10 +137,15 @@ export default class Watcher {
    */
   addDep (dep: Dep) {
     const id = dep.id
+    // 判重， 如果dep已存在则不重复添加
     if (!this.newDepIds.has(id)) {
+      // 缓存dep.id 用于判重
       this.newDepIds.add(id)
+      // 添加dep
       this.newDeps.push(dep)
+      // 避免在dep中重复添加watcher this.depIds的设置在cleanupDeps方法中
       if (!this.depIds.has(id)) {
+        // 添加watcher 自己到dep
         dep.addSub(this)
       }
     }
@@ -171,13 +176,19 @@ export default class Watcher {
    * Subscriber interface.
    * Will be called when a dependency changes.
    */
+  // 根据watcher配置项 决定接下来怎么走 一般是queueWatcher
   update () {
     /* istanbul ignore else */
     if (this.lazy) {
+      // 懒执行走这里 比如computed
+      // 将dirty置为true 可以让computedGetter 执行重写计算computed 回调函数的执行结果
       this.dirty = true
     } else if (this.sync) {
+      // 同步执行 使用vm.$watch 或者 watch选项时可以传一个sync选项
+      // 为true时在数据更新时该watcher就不走异步更新队列，直接执行this.run方法进行异步更新
       this.run()
     } else {
+      // 更新时一般走这里 将watcher放入watcher队列
       queueWatcher(this)
     }
   }
@@ -186,6 +197,10 @@ export default class Watcher {
    * Scheduler job interface.
    * Will be called by the scheduler.
    */
+  // 由刷新队列函数flushSchedulerQueue，完成如下几件事
+  // 1.执行实例化watcher传递的第二个参数，updateComponent或者获取this.xxx的一个函数
+  // 2.更新旧值为新值
+  // 3.执行实例化watcher时传递的第三个参数，比如用户watcher的回调
   run () {
     if (this.active) {
       const value = this.get()
@@ -201,12 +216,14 @@ export default class Watcher {
         const oldValue = this.value
         this.value = value
         if (this.user) {
+          // 如果是用户watcher 则执行用户传递的第三个参数：回调函数，参数为val和oldVal
           try {
             this.cb.call(this.vm, value, oldValue)
           } catch (e) {
             handleError(e, this.vm, `callback for watcher "${this.expression}"`)
           }
         } else {
+          // 渲染watcher，this.cb = noop, 一个空函数
           this.cb.call(this.vm, value, oldValue)
         }
       }
@@ -217,6 +234,12 @@ export default class Watcher {
    * Evaluate the value of the watcher.
    * This only gets called for lazy watchers.
    */
+  // 懒执行的watcher会调用该方法
+  // 比如: computed，在获取vm.computedProperty的值时会调用该方法
+  // 然后执行this.get,得到返回值
+  // this.dirty被设置为false，作用时页面在本次渲染中只回执行一次computed.key的回调函数
+  // 这也是大家常说的computed和methods的区别之一是computed有缓存的原理所在
+  // 而页面更新后this.dirty会被重置为true,这一步是在this.update方法中完成
   evaluate () {
     this.value = this.get()
     this.dirty = false
