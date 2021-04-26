@@ -46,6 +46,7 @@ export default class Dep {
       // order
       subs.sort((a, b) => a.id - b.id)
     }
+    // 遍历dep中的wather，执行watcher.update()
     for (let i = 0, l = subs.length; i < l; i++) {
       subs[i].update()
     }
