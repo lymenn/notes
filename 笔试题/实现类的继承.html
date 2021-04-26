@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        function Parent(name){
+            this.parent = name
+        }
+        Parent.prototype.say = function(){
+            console.log(`${this.parent}: 你打篮球的样子像kunkun`);
+        }
+        function Child(name, parent){
+            Parent.call(this, parent)
+            this.child = name
+        }
+        // 这一步不用 Child.prototype === Parent.prototpe的原因是怕共享内存，修改父类对象影响子类
+        // 不用 Child.prototype === new Parent()的原因是会两次调用父类的构造方法(另一次是call)，会存在一份多余的父类实例属性
+        // Object.create是创建了父类原型的副本，与父类原型完全隔离
+        Child.prototype = Object.create(Parent.prototype)
+        // 子类的构造函数指向子类本身
+        Child.prototype.constructor = Child
+        var parent = new Parent('babba')
+        parent.say()
+        var child = new Child('son' ,'dady')
+        child.say()
+    </script>
+</body>
+</html>

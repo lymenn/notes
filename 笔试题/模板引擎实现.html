@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    
+</body>
+<script>
+    let template = '我是{{name}}，年龄{{age}}，性别{{sex}}';
+    let data = {
+        name: '姓名',
+        age: 18
+    }
+    function render(tpl, data){
+        let reg = /\{\{(\w+)\}\}/
+        if(reg.test(tpl)){
+            const name = reg.exec(tpl)[1]
+            tpl = tpl.replace(reg, data[name])
+            return render(tpl, data)
+        }
+        return tpl
+    }
+    let res = render(template, data)
+</script>
+</html>
