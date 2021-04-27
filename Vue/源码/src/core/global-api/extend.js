@@ -16,11 +16,17 @@ export function initExtend (Vue: GlobalAPI) {
   /**
    * Class inheritance
    */
+  // 基于Vue去扩展子类，该子类同样支持进一步的扩展
+  // 扩展时可以传递一些默认配置，就像Vue也会有一些默认配置
+  // 默认配置和基类有冲突则会进行选项合并 mergeOptions
   Vue.extend = function (extendOptions: Object): Function {
     extendOptions = extendOptions || {}
     const Super = this
     const SuperId = Super.cid
     const cachedCtors = extendOptions._Ctor || (extendOptions._Ctor = {})
+    // 如果缓存中存在，则直接返回缓存中的构造函数
+    // 是么情况下可以利用这个缓存?
+    // 如果你在多次调用Vue.extend时,使用了同一个配置项(extendOptions),这是就会启用缓存
     if (cachedCtors[SuperId]) {
       return cachedCtors[SuperId]
     }
@@ -29,22 +35,28 @@ export function initExtend (Vue: GlobalAPI) {
     if (process.env.NODE_ENV !== 'production' && name) {
       validateComponentName(name)
     }
-
+    // 定义Sub构造函数和Vue构造函数一样
     const Sub = function VueComponent (options) {
+      //初始化
       this._init(options)
     }
+    // 通过原型继承的方式继承Vue
     Sub.prototype = Object.create(Super.prototype)
     Sub.prototype.constructor = Sub
     Sub.cid = cid++
+    // 选项合并，合并Vue的配置项到自己的配置项上来
     Sub.options = mergeOptions(
       Super.options,
       extendOptions
     )
+    // 记录自己的基类
     Sub['super'] = Super
 
     // For props and computed properties, we define the proxy getters on
     // the Vue instances at extension time, on the extended prototype. This
     // avoids Object.defineProperty calls for each instance created.
+    // 初始化props，将props代理到Sub.prototype._props对象上
+    // 组件类通过this._props访问
     if (Sub.options.props) {
       initProps(Sub)
     }
@@ -53,16 +65,19 @@ export function initExtend (Vue: GlobalAPI) {
     }
 
     // allow further extension/mixin/plugin usage
+    // 定义extend/mixin/use这三个静态方法，允许在Sub基础上再进一步构造子类
     Sub.extend = Super.extend
     Sub.mixin = Super.mixin
     Sub.use = Super.use
 
     // create asset registers, so extended classes
     // can have their private assets too.
+    // 定义componet、filter、directive三个静态方法
     ASSET_TYPES.forEach(function (type) {
       Sub[type] = Super[type]
     })
     // enable recursive self-lookup
+    // 递归组件的原理，如果组件设置了name属性，则将自己注册到自己的components选项中
     if (name) {
       Sub.options.components[name] = Sub
     }
@@ -70,11 +85,14 @@ export function initExtend (Vue: GlobalAPI) {
     // keep a reference to the super options at extension time.
     // later at instantiation we can check if Super's options have
     // been updated.
+    // 扩展时保留对基类选项的引用
+    // 稍后在实例化时，我们可以检查 Super 的选项是否具有更新
     Sub.superOptions = Super.options
     Sub.extendOptions = extendOptions
     Sub.sealedOptions = extend({}, Sub.options)
 
     // cache constructor
+    // 缓存
     cachedCtors[SuperId] = Sub
     return Sub
   }
