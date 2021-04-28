@@ -58,6 +58,7 @@ export function initLifecycle (vm: Component) {
 }
 
 export function lifecycleMixin (Vue: Class<Component>) {
+  // 负责更新页面 页面首次渲染和后续更新的入口位置，也是patch的入口位置
   Vue.prototype._update = function (vnode: VNode, hydrating?: boolean) {
     const vm: Component = this
     const prevEl = vm.$el
@@ -68,9 +69,11 @@ export function lifecycleMixin (Vue: Class<Component>) {
     // based on the rendering backend used.
     if (!prevVnode) {
       // initial render
+      // 首次渲染即初始化页面时走这里
       vm.$el = vm.__patch__(vm.$el, vnode, hydrating, false /* removeOnly */)
     } else {
       // updates
+      // 响应式数据更新时，即更新页面走这里
       vm.$el = vm.__patch__(prevVnode, vnode)
     }
     restoreActiveInstance()
@@ -89,6 +92,8 @@ export function lifecycleMixin (Vue: Class<Component>) {
     // updated in a parent's updated hook.
   }
 
+  // 直接调用watcher.update方法，迫使组件重新渲染
+  // 它仅仅影响实例本身和插入内容的子组件，而不是所有子组件
   Vue.prototype.$forceUpdate = function () {
     const vm: Component = this
     if (vm._watcher) {
@@ -96,14 +101,19 @@ export function lifecycleMixin (Vue: Class<Component>) {
     }
   }
 
+  // 完全销毁一个实例。清理它与其他实例的连接，解绑他的全部指令及事件监听
   Vue.prototype.$destroy = function () {
     const vm: Component = this
     if (vm._isBeingDestroyed) {
+      // 表示实例已销毁
       return
     }
+    // 调用beforeDestory钩子
     callHook(vm, 'beforeDestroy')
+    // 标识实例已经销毁
     vm._isBeingDestroyed = true
     // remove self from parent
+    // 将自己从父组件的$children里移除
     const parent = vm.$parent
     if (parent && !parent._isBeingDestroyed && !vm.$options.abstract) {
       remove(parent.$children, vm)
@@ -113,6 +123,7 @@ export function lifecycleMixin (Vue: Class<Component>) {
       vm._watcher.teardown()
     }
     let i = vm._watchers.length
+    // 移除监听
     while (i--) {
       vm._watchers[i].teardown()
     }
@@ -124,10 +135,13 @@ export function lifecycleMixin (Vue: Class<Component>) {
     // call the last hook...
     vm._isDestroyed = true
     // invoke destroy hooks on current rendered tree
+    // 调用__patch__销毁节点
     vm.__patch__(vm._vnode, null)
     // fire destroyed hook
+    // 调用destory钩子
     callHook(vm, 'destroyed')
     // turn off all instance listeners.
+    // 关闭实例的所有事件监听
     vm.$off()
     // remove __vue__ reference
     if (vm.$el) {

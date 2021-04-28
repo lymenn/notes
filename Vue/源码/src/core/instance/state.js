@@ -354,24 +354,35 @@ export function stateMixin (Vue: Class<Component>) {
       warn(`$props is readonly.`, this)
     }
   }
+  // 将data属性和props属性挂载到Vue.prototype对象上
+  // 这样在程序中就可以通过this.$data和$props来访问data和props对象了
   Object.defineProperty(Vue.prototype, '$data', dataDef)
   Object.defineProperty(Vue.prototype, '$props', propsDef)
 
   Vue.prototype.$set = set
   Vue.prototype.$delete = del
-
+  // 创建watcher,返回unwatch,共完成如下5件事
+  // 1、兼容性处理，保证最后new Watcher时cb为函数
+  // 2、标识用户watcher
+  // 3、创建watcher实例
+  // 4、设置了immediate，则立即执行一次cb
+  // 5、返回unwatch
   Vue.prototype.$watch = function (
     expOrFn: string | Function,
     cb: any,
     options?: Object
   ): Function {
     const vm: Component = this
+    // 兼容性处理，因为用户vm.$watch时设置的cb可能是对象
     if (isPlainObject(cb)) {
       return createWatcher(vm, expOrFn, cb, options)
     }
+    // options.user表示用户watcher，还有渲染watcher，即updateComponent方法中实例化的watcher
     options = options || {}
     options.user = true
+    // 创建watcher
     const watcher = new Watcher(vm, expOrFn, cb, options)
+    // 如果用户设置了immediate为true，则立即执行一次回调函数
     if (options.immediate) {
       pushTarget()
       try {
@@ -381,6 +392,7 @@ export function stateMixin (Vue: Class<Component>) {
       }
       popTarget()
     }
+    // 返回一个unwatch函数，用于解除监听
     return function unwatchFn () {
       watcher.teardown()
     }
