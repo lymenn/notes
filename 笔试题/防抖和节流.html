@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <button id="btn">测试防抖</button>
+    <button id="btn2">测试节流</button>
+</body>
+<script src="./js/debounce.js"></script>
+<script src="./js/throttle.js"></script>
+<script>
+    let ajax = function(){
+        console.log('已经发送请求');
+    }
+    let debounceAjx = debounce(ajax, 3000)
+    let btn = document.querySelector('#btn')
+    btn.addEventListener('click', function(){
+        debounceAjx()
+    })
+    let throttleAjx = throttle(ajax, 1000)
+    let btn2 = document.querySelector('#btn2')
+    btn2.addEventListener('click', function(){
+        throttleAjx()
+    })
+</script>
+</html>

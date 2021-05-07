@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    
+</body>
+<script src="./js/deepClone.js"></script>
+<script>
+    // const originObj = {a:'a',b:'b',c:[1,2,3],d:{dd:'dd'}};
+    // const cloneObj = deepClone(originObj);
+    // // console.log(cloneObj===originObj);
+    // const originArray = [1,[1,2,3],{a:1}];
+    // const cloneArray = originArray.concat();
+    // console.log(cloneObj===originObj);
+    const target = {
+        field1: 1,
+        field2: undefined,
+        field3: {
+            child: 'child'
+        },
+        field4: [2, 4, 8]
+    };
+    target.target = target;
+    const cloneObj = deepClone(target);
+    console.log(cloneObj, 77);
+</script>
+</html>
