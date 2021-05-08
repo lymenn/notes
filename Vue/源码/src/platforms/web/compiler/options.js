@@ -1,10 +1,10 @@
 /* @flow */
 
 import {
-  isPreTag,
-  mustUseProp,
-  isReservedTag,
-  getTagNamespace
+    isPreTag,
+    mustUseProp,
+    isReservedTag,
+    getTagNamespace
 } from '../util/index'
 
 import modules from './modules/index'
@@ -13,14 +13,22 @@ import { genStaticKeys } from 'shared/util'
 import { isUnaryTag, canBeLeftOpenTag } from './util'
 
 export const baseOptions: CompilerOptions = {
-  expectHTML: true,
-  modules,
-  directives,
-  isPreTag,
-  isUnaryTag,
-  mustUseProp,
-  canBeLeftOpenTag,
-  isReservedTag,
-  getTagNamespace,
-  staticKeys: genStaticKeys(modules)
+    expectHTML: true,
+    // 处理 class、style、v-model
+    modules,
+    // 处理指令
+    directives,
+    // 是否是pre标签
+    isPreTag,
+    // 是否是自闭合标签
+    isUnaryTag,
+    // 规定了一些应该使用props进行绑定的属性
+    mustUseProp,
+    // 可以只写开始标签的标签，结束标签浏览器自动补全
+    canBeLeftOpenTag,
+    // 是否是保留标签 html + svg
+    isReservedTag,
+    // 获取标签的命名空间
+    getTagNamespace,
+    staticKeys: genStaticKeys(modules)
 }
