@@ -339,11 +339,21 @@ export function parseHTML (html, options) {
         }
     }
 
+    // 解析结束标签，比如: </div>
+    // 最主要的就是:
+    // 1、处理stack数组， 从stack数组中找到当前结束标签对应的开始标签， 然后调用options.end方法
+    // 2、处理完结束标签后调整stack数组，保证在正常情况下stack数组中最后一个元素就是下一个结束标签对应的开始标签
+    // 3、处理一些异常情况，比如stack数组中最后一个元素不是当前结束标签对应的开始标签，还有就是 br和p标签单独处理
+    // @param {*} tagName 标签名，比如 div
+    // @param {*} start 结束标签的开始索引
+    // @param {*} end 结束标签的结束索引
     function parseEndTag (tagName, start, end) {
         let pos, lowerCasedTagName
         if (start == null) start = index
         if (end == null) end = index
 
+        // 倒叙遍历stack数组，找到第一个和当前结束标签相同的标签，该标签就是结束标签对应的开始标签的描述对象
+        // 理论上，不出异常，stack数组中的最后一个元素就是当前结束标签对应的开始标签的描述对象
         // Find the closest opened tag of the same type
         if (tagName) {
             lowerCasedTagName = tagName.toLowerCase()
@@ -357,7 +367,15 @@ export function parseHTML (html, options) {
             pos = 0
         }
 
+        // 如果在stack中一直没找到相同的标签名，则pos 就会< 0，进行后面的else分支
         if (pos >= 0) {
+            // 这个for循环负责关闭stack数组中索引 >= pos的所有标签
+            // 为什么要用一个循环，上面说到正常情况下stack数组的最后一个元素就是我们要找的开始标签
+            // 但是有些异常情况，就是有些元素没有提供结束标签，比如：
+            // stack = ['span', 'div', 'span', 'h1']，当前处理的结束标签tagName = div  
+            // 匹配到div,pos = 1, 那索引为2和3的两个标签span、h1说明就没提供结束标签
+            // 这个for循环负责关闭div、span、h1这三个标签
+            // 并在开发环境为span和h1这两个标签给出 “未匹配到结束标签的提示”
             // Close all the open elements, up the stack
             for (let i = stack.length - 1; i >= pos; i--) {
                 if (process.env.NODE_ENV !== 'production' &&
@@ -370,22 +388,29 @@ export function parseHTML (html, options) {
                     )
                 }
                 if (options.end) {
+                    走到这里说明，上面的异常情况处理完了，调用options.end处理正常的结束标签
                     options.end(stack[i].tag, start, end)
                 }
             }
 
             // Remove the open elements from the stack
+            // 将刚才处理的那些标签从数组中移除，保证数组的最后一个元素就是下一结束标签对应的开始标签
             stack.length = pos
+            // lastTag记录数组中未处理的最后一个开始标签
             lastTag = pos && stack[pos - 1].tag
         } else if (lowerCasedTagName === 'br') {
+            // 当前处理的标签为br标签
             if (options.start) {
                 options.start(tagName, [], true, start, end)
             }
         } else if (lowerCasedTagName === 'p') {
+            // p标签
             if (options.start) {
+                // 处理<p>标签
                 options.start(tagName, [], false, start, end)
             }
             if (options.end) {
+                // 处理</p>标签
                 options.end(tagName, start, end)
             }
         }

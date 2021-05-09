@@ -236,7 +236,21 @@ export function parse (
         shouldDecodeNewlinesForHref: options.shouldDecodeNewlinesForHref,
         shouldKeepComment: options.comments,
         outputSourceRange: options.outputSourceRange,
+        // 主要做了一下6件事
+        // 1、创建ast对象
+        // 2、处理存在v-model指令的input标签，分别处理input为checkbox、radio、其他的情况
+        // 3、处理标签上的众多指令，比如v-pre，v-if、v-for、v-once 
+        // 4、如果根节点root不存在，则设置当前元素为根节点
+        // 5、如果当前元素为非自闭合标签则将自己push到stack数组，并记录currentParent。在接下来处理子元素时用来告诉子元素自己的父节点是谁
+        // 6、如果当前元素为自闭合标签，则表示该标签要处理结束了，让自己和父元素产生关系，以及设置自己的子元素
+        // @param {*} tag 标签名
+        // @param {*} attrs [{ name: attrName, value: attrVal, start, end }, ...] 形式的属性数组
+        // @param {*} unary 自闭合标签
+        // @param {*} start 标签在 html 字符串中的开始索引
+        // @param {*} end 标签在 html 字符串中的结束索引
+
         start (tag, attrs, unary, start, end) {
+            // 检查命名空间，如果存在，则继承父命名空间
             // check namespace.
             // inherit parent ns if there is one
             const ns = (currentParent && currentParent.ns) || platformGetTagNamespace(tag)
@@ -247,20 +261,25 @@ export function parse (
                 attrs = guardIESVGBug(attrs)
             }
 
+            // 创建当前标签的AST对象
             let element: ASTElement = createASTElement(tag, attrs, currentParent)
+            // 设置命名空间
             if (ns) {
                 element.ns = ns
             }
 
+            // 这段在非生产环境下会走，在ast对象上添加一些属性， 比如start、end
             if (process.env.NODE_ENV !== 'production') {
                 if (options.outputSourceRange) {
                     element.start = start
                     element.end = end
+                    // 将属性解析成 { attrName: { name: attrName, value: attrVal, start, end }, ... } 形式的对象
                     element.rawAttrsMap = element.attrsList.reduce((cumulated, attr) => {
                         cumulated[attr.name] = attr
                         return cumulated
                     }, {})
                 }
+                // 验证属性是否有效，比如属性名不能包含：spaces, quotes,<, >, / or =.
                 attrs.forEach(attr => {
                     if (invalidAttributeRE.test(attr.name)) {
                         warn(
@@ -275,6 +294,7 @@ export function parse (
                 })
             }
 
+            // 非服务端渲染的情况下，模板中不应该出现script、style标签
             if (isForbiddenTag(element) && !isServerRendering()) {
                 element.forbidden = true
                 process.env.NODE_ENV !== 'production' && warn(
@@ -286,13 +306,21 @@ export function parse (
             }
 
             // apply pre-transforms
+            // 为element对象分别执行class、style、model模块中的preTransforms方法
+            // 不过web平台只有model模块有preTransforms方法
+            // 用来处理存在v-model的input标签，但没处理v-model属性
+            // 分别处理了input为checkbox、radio和其他情况
+            // input具体为那种情况由el.ifConditions中调节来判断
+            // <input v-mode="test" :type="checkbox or radio or other(比如 text)" />
             for (let i = 0; i < preTransforms.length; i++) {
                 element = preTransforms[i](element, options) || element
             }
 
             if (!inVPre) {
+                // 表示element是否存在v-pre指令，存在则设置element.pre = true
                 processPre(element)
                 if (element.pre) {
+                    // 存在v-pre指令，则设置inVPre为true
                     inVPre = true
                 }
             }
@@ -300,37 +328,64 @@ export function parse (
                 inPre = true
             }
             if (inVPre) {
+                // 说明标签上存在v-pre指令，这样的节点只会渲染一次，将节点上的属性都设置到el.attrs数组对象中，最为静态属性，数据更新时不会渲染这部分内容
+                // 设置el.attrs数组对象，每一个元素都是一个属性对象{ name: attrName, value: attrVal, start, end }
                 processRawAttrs(element)
             } else if (!element.processed) {
                 // structural directives
+                // 处理v-for属性，得到element.for = 可迭代对象 element.alias = 别名
                 processFor(element)
+                // 处理v-if、v-else-if、v-else
+                // 得到element.if = 'exp', element.elseif = exp, element.else = true
+                // v-if属性会额外在element.ifConditions数组中添加{exp, block}对象
                 processIf(element)
+                // 处理v-once指令，得到element.once = true
                 processOnce(element)
             }
 
+            // 如果root不存在，则表示当前处理的元素为第一个元素，即组件的根元素
             if (!root) {
                 root = element
                 if (process.env.NODE_ENV !== 'production') {
+                    // 检查根元素，对根元素有一些限制，比如：不能使用slot和template作为根元素，也不能在有状态组件的根元素上使用v-for指令
                     checkRootConstraints(root)
                 }
             }
 
             if (!unary) {
+                // 非自闭合标签，通过currentParent记录当前元素，下一个元素在处理的时候，就知道自己的父元素是谁
                 currentParent = element
+                // 然后将element push到stack数组，将来处理到当前元素的闭合标签时再拿出来
+                // 将当前标签的ast对象push到stack数组中，在这里需要注意，在调用options.start方法之前
+                // 也发生过一次push操作，那个push进来的是当前标签的一个基本配置信息
                 stack.push(element)
             } else {
+                // 说明当前元素为自闭合标签，主要做了3件事：
+                // 1、如果元素没有被处理过，即el.processed = false，则调用processElement方法处理节点上的众多属性
+                // 2、让自己和父元素产生关系，将自己放到父元素children数组中，并设置自己的parent属性为currentParent
+                // 3、设置自己的子元素，将自己所有非插槽的子元素放到自己的children数组中
                 closeElement(element)
             }
         },
 
+        // 处理结束标签
+        //  @param {*} tag 结束标签的名称
+        //  @param {*} start 结束标签的开始索引
+        //  @param {*} end 结束标签的结束索引
         end (tag, start, end) {
+            // 结束标签对应的开始标签的ast对象
             const element = stack[stack.length - 1]
             // pop stack
             stack.length -= 1
+            // 这块儿有点不太理解，因为上一个元素有可能是当前元素的兄弟节点
             currentParent = stack[stack.length - 1]
             if (process.env.NODE_ENV !== 'production' && options.outputSourceRange) {
                 element.end = end
             }
+            // 主要做了3件事
+            // 1、如果元素没有被处理过，即el.processed = false,则调用processElement方法处理节点上的众多属性
+            // 2、让自己和父元素产生关系，将自己放到父元素的children数组中，并设置自己的parent属性为currentParent
+            // 3、设置自己的子元素，将自己所有的非插槽的子元素放到自己的children数组中
             closeElement(element)
         },
 
