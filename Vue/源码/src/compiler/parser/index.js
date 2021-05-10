@@ -56,19 +56,30 @@ let platformIsPreTag
 let platformMustUseProp
 let platformGetTagNamespace
 let maybeComponent
-
+// 为指定元素创建ast对象
+// @param {*} tag 标签名
+// @param {*} attrs 属性数组，[{ name: attrName, value: attrVal, start, end }, ...]
+// @param {*} parent 父元素
+// @returns { type: 1, tag, attrsList, attrsMap: makeAttrsMap(attrs), rawAttrsMap: {}, parent, children: []}
 export function createASTElement (
     tag: string,
     attrs: Array<ASTAttr>,
     parent: ASTElement | void
 ): ASTElement {
     return {
+        // 节点类型
         type: 1,
+        // 标签名
         tag,
+        // 标签的属性数组
         attrsList: attrs,
+        // 标签的属性对象{ attrName: attrVal, ... }
         attrsMap: makeAttrsMap(attrs),
+        // 原始属性对象
         rawAttrsMap: {},
+        // 父节点
         parent,
+        // 孩子节点
         children: []
     }
 }
@@ -389,15 +400,17 @@ export function parse (
             closeElement(element)
         },
 
+        // 处理文本，基于文本生成ast对象，然后将该ast对象放到他的父元素的肚子里，即currentParent.children数组中
         chars (text: string, start: number, end: number) {
+            // currentParent不存在则说明这段文本没有父元素
             if (!currentParent) {
                 if (process.env.NODE_ENV !== 'production') {
-                    if (text === template) {
+                    if (text === template) { //文本不能作为组件的根元素
                         warnOnce(
                             'Component template requires a root element, rather than just text.',
                             { start }
                         )
-                    } else if ((text = text.trim())) {
+                    } else if ((text = text.trim())) { //放在根元素之外的文本会被忽略
                         warnOnce(
                             `text "${text}" outside root element will be ignored.`,
                             { start }
@@ -414,13 +427,19 @@ export function parse (
             ) {
                 return
             }
+            // 当前父元素的所有孩子节点
             const children = currentParent.children
+            // 对text进行一系列处理，比如删除空白字符，或者存在whitespaceOptions选项，则text直接置为空或者空格
             if (inPre || text.trim()) {
+                // 文本在pre标签内，或者text.trim()不为空
                 text = isTextTag(currentParent) ? text : decodeHTMLCached(text)
             } else if (!children.length) {
                 // remove the whitespace-only node right after an opening tag
+                //说明文本不在pre标签内而且text.trim()为空，而且当前父元素没有孩子节点
+                //则将text置为空
                 text = ''
             } else if (whitespaceOption) {
+                // 压缩处理
                 if (whitespaceOption === 'condense') {
                     // in condense mode, remove the whitespace node if it contains
                     // line break, otherwise condense to a single space
@@ -431,26 +450,34 @@ export function parse (
             } else {
                 text = preserveWhitespace ? ' ' : ''
             }
+            // 如果经过处理后text还存在
             if (text) {
                 if (!inPre && whitespaceOption === 'condense') {
                     // condense consecutive whitespaces into single space
+                    // 不在pre节点中，并且配置选项中存在压缩选项，则删除多个连续空格压缩为单个
                     text = text.replace(whitespaceRE, ' ')
                 }
                 let res
+                // 基于text生成ast对象
                 let child: ?ASTNode
                 if (!inVPre && text !== ' ' && (res = parseText(text, delimiters))) {
+                    // 文本中存在表达式（即有界定符）
                     child = {
                         type: 2,
+                        // 表达式
                         expression: res.expression,
                         tokens: res.tokens,
+                        // 文本
                         text
                     }
                 } else if (text !== ' ' || !children.length || children[children.length - 1].text !== ' ') {
+                    // 纯文本节点
                     child = {
                         type: 3,
                         text
                     }
                 }
+                // child存在则将child放到父元素的肚子里，即currentParent.children数组中
                 if (child) {
                     if (process.env.NODE_ENV !== 'production' && options.outputSourceRange) {
                         child.start = start
@@ -460,19 +487,28 @@ export function parse (
                 }
             }
         },
+        // 处理注释节点
         comment (text: string, start, end) {
             // adding anything as a sibling to the root node is forbidden
             // comments should still be allowed, but ignored
+            // 禁止将任何内容作为root的节点的同级进行添加，注释应该被允许，但是会被忽略
+            // 如果currentParent不存在，说明注释和root为同级，忽略
             if (currentParent) {
+                // 注释节点的ast
                 const child: ASTText = {
+                    // 节点类型
                     type: 3,
+                    // 注释内容
                     text,
+                    // 是否为注释
                     isComment: true
                 }
                 if (process.env.NODE_ENV !== 'production' && options.outputSourceRange) {
+                    // 记录节点开始索引和结束索引
                     child.start = start
                     child.end = end
                 }
+                // 将当前注释节点放到父元素的children属性中
                 currentParent.children.push(child)
             }
         }
@@ -507,42 +543,75 @@ function processRawAttrs (el) {
         el.plain = true
     }
 }
-
+// 分别处理元素节点的key、ref、插槽、自闭合的slot标签、动态组件、class、style、v-bind、v-on、其他指令和一些原生属性
+// 然后再el对象上添加如下属性
+// el.key, ref,refInFor,scopedSlots, slotName,component,inlineTemplate,staticClass
+// el.bindingClass, staticStyle, bindingStyle, attrs
+// @param {*} element 被处理元素的 ast 对象
+// @param {*} options 配置项
+// @returns
 export function processElement (
     element: ASTElement,
     options: CompilerOptions
 ) {
+    // el.key = val
     processKey(element)
 
     // determine whether this is a plain element after
     // removing structural attributes
+    // 确定element是否为一个普通元素
     element.plain = (
         !element.key &&
         !element.scopedSlots &&
         !element.attrsList.length
     )
 
+    // el.ref = val el.refInFor = Boolean
     processRef(element)
+    // 处理作为插槽传递给组件的内容，得到，插槽名称，是否为动态插槽，作用域插槽的值，以及插槽中的所有子元素，子元素放到插槽对象的children属性中
     processSlotContent(element)
+    // 处理自闭合的slot标签，得到插槽名称 => el.slotName = xx
     processSlotOutlet(element)
+
+    // 处理动态组件， <component :is="compoName"></component>得到 el.component = compName
+    // 以及标记是否存在内联模板，el.inlineTemplate = true or false
     processComponent(element)
+
+    // 为element对象分别执行class、style、model模块中的transformNode方法
+    // 不过web平台只有class、style、模块有transformNode方法，分别来处理class属性和style属性
+    // 得到el.staticStyle，el.styleBinding, el.staticClass, el.classBinding
+    // 分别存放静态style属性的值，动态style属性的值，以及静态class属性的值和动态class属性的值
     for (let i = 0; i < transforms.length; i++) {
         element = transforms[i](element, options) || element
     }
+    // 处理元素上的所有属性
+    // v - bind指令变成：el.attrs或el.dynamicAttrs = [{ name, value, start, end, dynamic }, ...],
+    //     或者是必须使用 props 的属性，变成了 el.props = [{ name, value, start, end, dynamic }, ...]
+    // v - on 指令变成：el.events 或 el.nativeEvents = { name: [{ value, start, end, modifiers, dynamic }, ...] }
+    // 其它指令：el.directives = [{ name, rawName, value, arg, isDynamicArg, modifier, start, end }, ...]
+    // 原生属性：el.attrs = [{ name, value, start, end }]，或者一些必须使用 props 的属性，变成了：
+    // el.props = [{ name, value: true, start, end, dynamic }]
+
     processAttrs(element)
     return element
 }
 
+// 处理元素上的key属性，设置el.key = null
+// @param {*} el 
 function processKey (el) {
+    // 拿到key的属性值
     const exp = getBindingAttr(el, 'key')
     if (exp) {
+        // 关于key使用上的异常处理
         if (process.env.NODE_ENV !== 'production') {
+            // template标签不允许设置key
             if (el.tag === 'template') {
                 warn(
                     `<template> cannot be keyed. Place the key on real elements instead.`,
                     getRawBindingAttr(el, 'key')
                 )
             }
+            // 不要在<transition=group>的子元素上使用v-for的index作为key，这和没用key没什么区别
             if (el.for) {
                 const iterator = el.iterator2 || el.iterator1
                 const parent = el.parent
@@ -556,23 +625,37 @@ function processKey (el) {
                 }
             }
         }
+        // 设置el.key = exp
         el.key = exp
     }
 }
 
+// 处理元素上的ref属性
+// el.ref = refVal
+// el.refInFor = boolean
+// @param {*} el
 function processRef (el) {
     const ref = getBindingAttr(el, 'ref')
     if (ref) {
+
         el.ref = ref
+        // 判断包含ref属性的元素是否包含在具有v-for指令的元素内或后代元素中
+        // 如果是，则ref指向的则是包含dom节点或组件实例的数组
         el.refInFor = checkInFor(el)
     }
 }
-
+// 处理 v -for，将结果设置到el对象上，得到：
+// el.for = 可迭代对象，比如arr
+// el.alias = 别名， 比如item
+// @param {*} el 元素的 ast 对象
 export function processFor (el: ASTElement) {
     let exp
+    // 获取el上的 v-for属性
     if ((exp = getAndRemoveAttr(el, 'v-for'))) {
+        // 解析v-for表达式，得到{ for: 可迭代对象， alias: 别名 }，比如 { for: arr, alias: item }
         const res = parseFor(exp)
         if (res) {
+            // 将res对象上的属性拷贝到el对象上
             extend(el, res)
         } else if (process.env.NODE_ENV !== 'production') {
             warn(
@@ -678,9 +761,17 @@ function processOnce (el) {
 
 // handle content being passed to a component as slot,
 // e.g. <template slot="xxx">, <div slot-scope="xxx">
+// 处理作为插槽传递给组件的内容，得到：
+// slotTarget => 插槽名
+// slotTargetDynamic => 是否为动态插槽
+// slotScope => 作用域插槽的值
+// 直接在 <comp> 标签上使用 v-slot 语法时，将上述属性放到 el.scopedSlots 对象上，其它情况直接放到 el 对象上
 function processSlotContent (el) {
     let slotScope
     if (el.tag === 'template') {
+        // template 标签上使用 scope 属性的提示
+        // scope 已经弃用，并在 2.5 之后使用 slot - scope 代替
+        // slot-scope 即可以用在 template 标签也可以用在普通标签上
         slotScope = getAndRemoveAttr(el, 'scope')
         /* istanbul ignore if */
         if (process.env.NODE_ENV !== 'production' && slotScope) {
@@ -693,10 +784,13 @@ function processSlotContent (el) {
                 true
             )
         }
+        // el.slotScope = val
         el.slotScope = slotScope || getAndRemoveAttr(el, 'slot-scope')
     } else if ((slotScope = getAndRemoveAttr(el, 'slot-scope'))) {
         /* istanbul ignore if */
         if (process.env.NODE_ENV !== 'production' && el.attrsMap['v-for']) {
+            // 元素不能同时使用 slot - scope 和 v -for，v -for 具有更高的优先级
+            // 应该用 template 标签作为容器，将 slot-scope 放到 template 标签上
             warn(
                 `Ambiguous combined usage of slot-scope and v-for on <${el.tag}> ` +
                 `(v-for takes higher priority). Use a wrapper <template> for the ` +
@@ -709,13 +803,19 @@ function processSlotContent (el) {
     }
 
     // slot="xxx"
+    // 获取 slot 属性的值
+    // slot = 'xxx', 老旧的具名插槽的写法
     const slotTarget = getBindingAttr(el, 'slot')
     if (slotTarget) {
+        // el.slotTarget = 插槽名（具名插槽）
         el.slotTarget = slotTarget === '""' ? '"default"' : slotTarget
+        // 动态插槽名
         el.slotTargetDynamic = !!(el.attrsMap[':slot'] || el.attrsMap['v-bind:slot'])
         // preserve slot as an attribute for native shadow DOM compat
         // only for non-scoped slots.
         if (el.tag !== 'template' && !el.slotScope) {
+            // v - slot在template标签上，得到v - slot的值
+            // v-slot on <template>
             addAttr(el, 'slot', slotTarget, getRawBindingAttr(el, 'slot'))
         }
     }
@@ -726,14 +826,26 @@ function processSlotContent (el) {
             // v-slot on <template>
             const slotBinding = getAndRemoveAttrByRegex(el, slotRE)
             if (slotBinding) {
+                // 异常提示
                 if (process.env.NODE_ENV !== 'production') {
                     if (el.slotTarget || el.slotScope) {
+                        // 不同插槽语法禁止混合使用
                         warn(
                             `Unexpected mixed usage of different slot syntaxes.`,
                             el
                         )
                     }
                     if (el.parent && !maybeComponent(el.parent)) {
+                        // <template v-slot> 只能出现在组件的根位置，比如：
+                        // <comp>
+                        //   <template v-slot>xx</template>
+                        // </comp>
+                        // 而不能是
+                        // <comp>
+                        //   <div>
+                        //     <template v-slot>xxx</template>
+                        //   </div>
+                        // </comp>
                         warn(
                             `<template v-slot> can only appear at the root level inside ` +
                             `the receiving component`,
@@ -741,28 +853,39 @@ function processSlotContent (el) {
                         )
                     }
                 }
+                // 得到插槽名称
                 const { name, dynamic } = getSlotName(slotBinding)
+                // 插槽名
                 el.slotTarget = name
+                // 是否为动态插槽
                 el.slotTargetDynamic = dynamic
+                // 作用域插槽的值
                 el.slotScope = slotBinding.value || emptySlotScopeToken // force it into a scoped slot for perf
             }
         } else {
             // v-slot on component, denotes default slot
+            // 处理组件上的 v-slot，<comp v-slot:header />
+            // slotBinding = { name: "v-slot:header", value: "", start, end}
+
             const slotBinding = getAndRemoveAttrByRegex(el, slotRE)
             if (slotBinding) {
+                // 异常提示
                 if (process.env.NODE_ENV !== 'production') {
+                    // el 不是组件的话，提示，v-slot 只能出现在组件上或 template 标签上
                     if (!maybeComponent(el)) {
                         warn(
                             `v-slot can only be used on components or <template>.`,
                             slotBinding
                         )
                     }
+                    // 语法混用
                     if (el.slotScope || el.slotTarget) {
                         warn(
                             `Unexpected mixed usage of different slot syntaxes.`,
                             el
                         )
                     }
+                    // 为了避免作用域歧义，当存在其他命名插槽时，默认插槽应该使用 < template > 语法
                     if (el.scopedSlots) {
                         warn(
                             `To avoid scope ambiguity, the default slot should also use ` +
@@ -772,13 +895,20 @@ function processSlotContent (el) {
                     }
                 }
                 // add the component's children to its default slot
+                // 将组件的孩子添加到他的默认插槽内
                 const slots = el.scopedSlots || (el.scopedSlots = {})
+                // 获取插槽名称以及是否为动态插槽
                 const { name, dynamic } = getSlotName(slotBinding)
+                // 创建一个template标签的ast对象，用于容纳插槽内容，父级是el
                 const slotContainer = slots[name] = createASTElement('template', [], el)
+                // 插槽名
                 slotContainer.slotTarget = name
+                // 是否为动态插槽
                 slotContainer.slotTargetDynamic = dynamic
+                // 所有的孩子，将每一个孩子的parent属性设置为slotContainer
                 slotContainer.children = el.children.filter((c: any) => {
                     if (!c.slotScope) {
+                        // 给插槽内元素设置parent属性为slotContainer,也就是template元素
                         c.parent = slotContainer
                         return true
                     }
@@ -793,6 +923,7 @@ function processSlotContent (el) {
     }
 }
 
+// 解析binding，解析插槽名称以及是否为动态插槽
 function getSlotName (binding) {
     let name = binding.name.replace(slotRE, '')
     if (!name) {
@@ -812,10 +943,13 @@ function getSlotName (binding) {
         : { name: `"${name}"`, dynamic: false }
 }
 
-// handle <slot/> outlets
+// handle <slot/> outlets，处理自闭合slot标签
+// 得到插槽名称，el.slotName
 function processSlotOutlet (el) {
     if (el.tag === 'slot') {
+        // 得到插槽名称
         el.slotName = getBindingAttr(el, 'name')
+        // 提示信息，不要在slot标签上使用key属性
         if (process.env.NODE_ENV !== 'production' && el.key) {
             warn(
                 `\`key\` does not work on <slot> because slots are abstract outlets ` +
@@ -827,11 +961,17 @@ function processSlotOutlet (el) {
     }
 }
 
+// 处理动态组件，<component : is="compName"></component>
+// 得到el.component = compName
 function processComponent (el) {
     let binding
+    // 解析 is 属性，得到属性值，即组件名称，el.component = compName
     if ((binding = getBindingAttr(el, 'is'))) {
         el.component = binding
     }
+    // <component :is="compName" inline-template>xx</component>
+    // 组件上存在 inline-template属性，进行标记：el.inlineTemplate = true
+    // 表示组件开始和结束标签内的内容作为组件模板出现，而不是作为插槽分发，方便定义组件模板
     if (getAndRemoveAttr(el, 'inline-template') != null) {
         el.inlineTemplate = true
     }
