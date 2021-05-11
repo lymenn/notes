@@ -12,20 +12,25 @@
 
 </body>
 <script>
-    var createElements = function (count) {
-        var start = new Date();
-
-        for (var i = 0; i < count; i++) {
-            var element = document.createElement('div');
-            element.appendChild(document.createTextNode('' + i));
-            document.body.appendChild(element);
+    var lengthOfLongestSubstring = function (s) {
+        let res = '', temp = ''
+        for (let i = 0; i < s.length - 1; i++) {
+            if (temp === '') {
+                temp = s[i]
+            } else {
+                if (s[i + 1] === s[i]) {
+                    res = temp.length > res.length ? temp : res
+                    temp = ''
+                } else {
+                    temp += s[i]
+                }
+            }
         }
-
-        setTimeout(function () {
-            alert(new Date() - start);
-        }, 0);
+        return res
     };
-    createElements(10000);
+    let a = lengthOfLongestSubstring("abcabcbb")
+    console.log(a);
+
 </script>
 
 </html>
