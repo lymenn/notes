@@ -88,9 +88,15 @@ function markStatic (node: ASTNode) {
     }
 }
 
+// 进一步标记静态根，一个节点要成为静态根节点，需要具备以下条件：
+// 节点本身是静态节点，而且有子节点，而且子节点不只是一个文本节点，则标记为静态根
+// 静态根节点不能只有静态文本的子节点，因为这样收益太低！这种情况始终更新它就好了
+// @param { ASTElement } node 当前节点
+// @param { boolean } isInFor 当前节点是否被包裹在 v-for 指令所在的节点内
 function markStaticRoots (node: ASTNode, isInFor: boolean) {
     if (node.type === 1) {
         if (node.static || node.once) {
+            // 节点是静态的或者节点上有v-once指令，标记node.staticInFor = true or false
             node.staticInFor = isInFor
         }
         // For a node to qualify as a static root, it should have children that
@@ -105,11 +111,13 @@ function markStaticRoots (node: ASTNode, isInFor: boolean) {
         } else {
             node.staticRoot = false
         }
+        // 当前节点不是静态根节点的时候，递归遍历其子节点，标记静态根
         if (node.children) {
             for (let i = 0, l = node.children.length; i < l; i++) {
                 markStaticRoots(node.children[i], isInFor || !!node.for)
             }
         }
+        // 如果节点存在 v-if、 v-else-if、v-else指令，则为block节点标记静态根
         if (node.ifConditions) {
             for (let i = 1, l = node.ifConditions.length; i < l; i++) {
                 markStaticRoots(node.ifConditions[i].block, isInFor)
