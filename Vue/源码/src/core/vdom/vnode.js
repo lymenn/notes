@@ -46,28 +46,51 @@ export default class VNode {
         componentOptions?: VNodeComponentOptions,
         asyncFactory?: Function
     ) {
+        // 当前节点标签名
         this.tag = tag
+        // 当前节点数据 （VNodeData类型）
         this.data = data
+        // 当前节点子节点
         this.children = children
+        // 当前节点文本
         this.text = text
+        // 当前节点对应的真实DOM节点
         this.elm = elm
+        // 当前节点命名空间
         this.ns = undefined
+        // 当前节点上下文
         this.context = context
+        // 函数化组件上下文
         this.fnContext = undefined
+        // 函数化组件配置项
         this.fnOptions = undefined
+        // 函数化组件ScopeId
         this.fnScopeId = undefined
+        // 子节点key属性
         this.key = data && data.key
+        // 组件配置项
         this.componentOptions = componentOptions
+        // 组件实例
         this.componentInstance = undefined
+        // 当前节点父节点
         this.parent = undefined
+        // 是否为原生HTML或只是普通文本
         this.raw = false
+        // 静态节点标志 keep-alive
         this.isStatic = false
+        // 是否作为根节点插入
         this.isRootInsert = true
+        // 是否为注释节点
         this.isComment = false
+        // 是否为克隆节点
         this.isCloned = false
+        // 是否为v-once节点
         this.isOnce = false
+        // 异步工厂方法
         this.asyncFactory = asyncFactory
+        // 异步meta
         this.asyncMeta = undefined
+        // 是否为异步占位
         this.isAsyncPlaceholder = false
     }
 
