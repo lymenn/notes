@@ -31,7 +31,12 @@ export const createCompiler = createCompilerCreator(
         if (options.optimize !== false) {
             optimize(ast, options)
         }
-        // 从ast生成渲染函数，生成这样的代码，比如：code.render = "_c('div',{attrs:{"id":"app"}},_l((arr),function(item){return _c('div',{key:item},[_v(_s(item))])}),0)"
+        // 代码生成，将 ast 转换成可执行的 render 函数的字符串形式
+        // code = {
+        //   render: `with(this){return ${_c(tag, data, children, normalizationType)}}`,
+        //   staticRenderFns: [_c(tag, data, children, normalizationType), ...]
+        // }
+
         const code = generate(ast, options)
         return {
             ast,
