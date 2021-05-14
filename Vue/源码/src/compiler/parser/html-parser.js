@@ -50,7 +50,7 @@ function decodeAttr (value, shouldDecodeNewlines) {
     const re = shouldDecodeNewlines ? encodedAttrWithNewLines : encodedAttr
     return value.replace(re, match => decodingMap[match])
 }
-// 通过循环比例html模板字符串，一次处理其中的各个标签，以及标签上的属性
+// 通过循环遍历html模板字符串，依次处理其中的各个标签，以及标签上的属性
 // @param {*} html html 模版
 // @param {*} options 配置项
 export function parseHTML (html, options) {
@@ -63,6 +63,8 @@ export function parseHTML (html, options) {
     // 记录在原始html字符串中的开始位置
     let index = 0
     let last, lastTag
+    // 每次循环都从HTML模板中截取一小段字符串，然后重复以上过程，直到html模板被截成一个空字符串，解析完毕
+    // 在循环过程中会根据截取的字符串类型来触发不同的钩子函数
     while (html) {
         last = html
         // Make sure we're not in a plaintext content element like script/style
@@ -152,6 +154,10 @@ export function parseHTML (html, options) {
                 rest = html.slice(textEnd)
                 // 这个while循环就是处理<xx 之后的纯文本情况
                 // 截取文本内容，并找到有效标签开始位置 textEnd
+
+                // 剩余的模板不符合任何需要被解析的片段，说明<是文本的一部分，
+                // 继续循环找到下一个 <, 并将其前面的文本截取出来加到前面截取了一半的文本后面
+                // 重复此过程直到，所有文本都解析完
                 while (
                     !endTag.test(rest) &&
                     !startTagOpen.test(rest) &&
@@ -163,7 +169,7 @@ export function parseHTML (html, options) {
                     next = rest.indexOf('<', 1)
                     // 如果没找到 < ,则直接循环结束
                     if (next < 0) break
-                    // 走到这里说明在后续的字符串中找到了<,索引位置为textEnd
+                    // 走到这里说明在后续的字符串中找到了<,索引位置为next
                     textEnd += next
                     // 截取html字符串模板textEnd之后的内容赋值给rest,继续判断之后的字符串是否存在标签
                     rest = html.slice(textEnd)
@@ -194,7 +200,7 @@ export function parseHTML (html, options) {
             // 开始标签的小写形式
             const stackedTag = lastTag.toLowerCase()
             const reStackedTag = reCache[stackedTag] || (reCache[stackedTag] = new RegExp('([\\s\\S]*?)(</' + stackedTag + '[^>]*>)', 'i'))
-            // 匹配并处理开始标签和结束标签之间的所以文本，比如 <script>xx</script>
+            // 匹配并处理开始标签和结束标签之间的所有文本，比如 <script>xx</script>
             const rest = html.replace(reStackedTag, function (all, text, endTag) {
                 endTagLength = endTag.length
                 if (!isPlainTextElement(stackedTag) && stackedTag !== 'noscript') {
@@ -235,9 +241,12 @@ export function parseHTML (html, options) {
         html = html.substring(n)
     }
 
+    // 解析分为三部分: 解析标签名，属性，结尾
     // 解析开始标签， 比如： <div id="app" >
     // @returns { tagName: 'div', attrs: [[xx], ...], start: index }
+    // 如果不符合开始标签的正则表达式规则，返回undefined
     function parseStartTag () {
+        // step1： 解析标签名
         const start = html.match(startTagOpen)
         if (start) {
             // 处理结果
@@ -255,17 +264,30 @@ export function parseHTML (html, options) {
             // start[0] = '<div'
             advance(start[0].length)
             let end, attr
+
+            // step2： 解析标签属性
+            // 解析标签属性
             // 处理开始标签内的各个属性，并将这些属性放到match.attrs数组中
+            // 每解析一个属性，就截取一个属性。直到剩余的模板不存在属性
             while (!(end = html.match(startTagClose)) && (attr = html.match(dynamicArgAttribute) || html.match(attribute))) {
+                // 当前属性的开始位置
                 attr.start = index
+                // 移动index指针，截取掉当前属性
                 advance(attr[0].length)
+                //当前属性的结束位置(最后一个元素的索引 + 1)
                 attr.end = index
+                // 添加到返回结果集中
                 match.attrs.push(attr)
             }
+            // step3： 解析标签结尾，判断是否是自闭和标签
             // 开始标签的结束，end = '>' 或 end = ' />'
             if (end) {
+                // unarySlash: '' 或 unarySlash： ‘/’
+                // 标识开始标签是否是自闭和标签
                 match.unarySlash = end[1]
+                // 移动index指针，截取掉当前属性
                 advance(end[0].length)
+                // 标签的结束位置
                 match.end = index
                 return match
             }
@@ -388,7 +410,7 @@ export function parseHTML (html, options) {
                     )
                 }
                 if (options.end) {
-                    走到这里说明，上面的异常情况处理完了，调用options.end处理正常的结束标签
+                    // 走到这里说明，上面的异常情况处理完了，调用options.end处理正常的结束标签
                     options.end(stack[i].tag, start, end)
                 }
             }

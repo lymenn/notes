@@ -388,7 +388,7 @@ export function parse (
             const element = stack[stack.length - 1]
             // pop stack
             stack.length -= 1
-            // 这块儿有点不太理解，因为上一个元素有可能是当前元素的兄弟节点
+            // 更新当前父元素节点
             currentParent = stack[stack.length - 1]
             if (process.env.NODE_ENV !== 'production' && options.outputSourceRange) {
                 element.end = end
