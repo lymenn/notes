@@ -195,7 +195,8 @@ export function parseHTML (html, options) {
                 options.chars(text, index - text.length, index)
             }
         } else {
-            // 处理script、style、textarea标签的闭合标签
+            // 处理script、style、textarea标签的处理逻辑
+            // 纯文本内容元素视作文本处理
             let endTagLength = 0
             // 开始标签的小写形式
             const stackedTag = lastTag.toLowerCase()
@@ -212,12 +213,15 @@ export function parseHTML (html, options) {
                     text = text.slice(1)
                 }
                 if (options.chars) {
+                    // 触发钩子函数chars并把text放到钩子函数的参数中传出去
                     options.chars(text)
                 }
+                // 返回一个空白字符串，说明将匹配到的内容都截取掉了。这里的截取会将内容和结束标签一起截取掉
                 return ''
             })
             index += html.length - rest.length
             html = rest
+            // 最后，处理结束标签，本轮循环的所有逻辑都已处理完毕
             parseEndTag(stackedTag, index - endTagLength, index)
         }
 
