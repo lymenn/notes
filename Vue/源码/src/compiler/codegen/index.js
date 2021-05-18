@@ -65,6 +65,8 @@ export function generate (
     }
 }
 
+// 生成元素节点代码字符串
+// 节点类型总共三种 元素节点_c(createElement),文本节点_v(createTextVNode),注释节点_e(createEmptyVNode)
 export function genElement (el: ASTElement, state: CodegenState): string {
     if (el.parent) {
         el.pre = el.pre || el.parent.pre
@@ -108,6 +110,7 @@ export function genElement (el: ASTElement, state: CodegenState): string {
         } else {
             // 自定义组件和原生标签走这里
             let data
+            // el.plain为true，说明节点没有属性。通过el.plain来判断是否需要获取节点的属性数据
             if (!el.plain || (el.pre && state.maybeComponent(el))) {
                 // 非普通元素或者带有v-pre指令的组件走这里，处理节点的所有属性，返回一个json字符串
                 // 比如 '{ key: xx, ref: xx, ... }'
@@ -657,6 +660,7 @@ function genNode (node: ASTNode, state: CodegenState): string {
 }
 
 export function genText (text: ASTText | ASTExpression): string {
+    // JSON.stringify(text.text) 这个方法能给文本包装一层字符串 例如 JSON.stringify('hello') => "'hello'"
     return `_v(${text.type === 2
         ? text.expression // no need for () because already wrapped in _s()
         : transformSpecialNewlines(JSON.stringify(text.text))

@@ -69,10 +69,12 @@ export function parseHTML (html, options) {
         last = html
         // Make sure we're not in a plaintext content element like script/style
         // 确保不是在script style textarea这样的纯文本元素中
+        // 正常标签
         if (!lastTag || !isPlainTextElement(lastTag)) {
             // 找第一个<字符
             let textEnd = html.indexOf('<')
             // textEnd === 0 说明在开头找到了
+            // 不是 文本是标签类 标签类很多需要进一步分辨具体是那种类型
             // 分别处理可能找到的注释标签、条件注释标签、Doctype、开始标签、结束标签
             // 每处理完一种情况，就会截断(continue)循环，并且重置html字符串，将处理过的标签截断，下一次循环处理剩余的html字符串模板
             if (textEnd === 0) {
@@ -189,6 +191,7 @@ export function parseHTML (html, options) {
             }
 
             // 处理文本
+            // 文本需要进一步处理 区分文本是否带变量 如 hello lucy和 hello {$name}
             // 基于文本生成ast对象，然后将该ast放到它的父元素的肚子里
             // 即currentParent.children数组中
             if (options.chars && text) {

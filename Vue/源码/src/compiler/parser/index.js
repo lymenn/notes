@@ -460,11 +460,15 @@ export function parse (
                 let res
                 // 基于text生成ast对象
                 let child: ?ASTNode
+                // *****
+                // parseText 文本解析器，对文本进行二次加工。构建一个带变量的ast
+                // *****
                 if (!inVPre && text !== ' ' && (res = parseText(text, delimiters))) {
                     // 文本中存在表达式（即有界定符）
                     child = {
                         type: 2,
                         // 表达式
+                        // 'hello { name }' => 'hello' + _s(name)
                         expression: res.expression,
                         tokens: res.tokens,
                         // 文本

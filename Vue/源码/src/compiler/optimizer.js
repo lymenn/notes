@@ -21,6 +21,10 @@ const genStaticKeysCached = cached(genStaticKeys)
 // 优化
 // 遍历ast，标记每个节点是静态节点还是动态节点，然后标记静态跟节点
 // 这样在后续的更新过程中就不需要再关注这些节点
+// 标记静态子树有两个好处
+// 1、每次重新渲染时，不需要为静态子树创建新节点
+// 2、在虚拟dom中打补丁的过程可以跳过
+
 export function optimize (root: ?ASTElement, options: CompilerOptions) {
     if (!root) return
     isStaticKey = genStaticKeysCached(options.staticKeys || '')
@@ -28,11 +32,13 @@ export function optimize (root: ?ASTElement, options: CompilerOptions) {
     isPlatformReservedTag = options.isReservedTag || no
     // first pass: mark all non-static nodes.
     // 遍历所有节点，给每个节点设置static属性，标识其是否为静态节点
+    // 在ast中static属性为true的节点
     markStatic(root)
     // second pass: mark static roots.
     // 进一步标记静态根，一个节点要成为静态根节点，需要具体一下条件:
     // 节点本身是静态节点，而且有子节点，而且子节点不只是一个文本节点，则标记为静态根
     // 静态根节点不能只有静态文本的子节点，因为这样的收益太低，这种情况下始终更新它就好了
+    // 在ast中staticRoot属性为true的节点
     markStaticRoots(root, false)
 }
 
@@ -50,6 +56,7 @@ function genStaticKeys (keys: string): Function {
 function markStatic (node: ASTNode) {
     // 通过node.static来标识是否为静态节点
     node.static = isStatic(node)
+    // type类型为1，说明是元素节点
     if (node.type === 1) {
         // do not make component slot content static. this avoids
         // 1. components not able to mutate slot nodes
@@ -68,6 +75,7 @@ function markStatic (node: ASTNode) {
         // 遍历子节点，递归调用markStatic来标记这些子节点的static属性
         for (let i = 0, l = node.children.length; i < l; i++) {
             const child = node.children[i]
+            // 递归判断子节点
             markStatic(child)
             // 如果子节点是非静态节点，则将父节点更新为非静态节点
             if (!child.static) {
@@ -102,11 +110,15 @@ function markStaticRoots (node: ASTNode, isInFor: boolean) {
         // For a node to qualify as a static root, it should have children that
         // are not just static text. Otherwise the cost of hoisting out will
         // outweigh the benefits and it's better off to just always render it fresh.
+        // 要使节点符合静态根节点的要求，他必须有子节点
+        // 这个子节点不能是只有一个静态文本的子节点，否则优化成本超过收益
         if (node.static && node.children.length && !(
             node.children.length === 1 &&
             node.children[0].type === 3
         )) {
             node.staticRoot = true
+            // 当前节点已经被标记为静态根节点，将不会再处理子节点
+            // 只有当前节点不是静态根节点，才会继续向子节点中查找静态根节点
             return
         } else {
             node.staticRoot = false
@@ -135,17 +147,19 @@ function markStaticRoots (node: ASTNode, isInFor: boolean) {
 // @returns boolean
 function isStatic (node: ASTNode): boolean {
     if (node.type === 2) { // expression
+        // 带变量的动态文本节点
         // 比如：{{ msg }}
         return false
     }
     if (node.type === 3) { // text
+        // 不带变量的文本节点
         return true
     }
     return !!(node.pre || (
-        !node.hasBindings && // no dynamic bindings
-        !node.if && !node.for && // not v-if or v-for or v-else
-        !isBuiltInTag(node.tag) && // not a built-in
-        isPlatformReservedTag(node.tag) && // not a component
+        !node.hasBindings && // 没有动态绑定
+        !node.if && !node.for && // 没有 v-if or v-for or v-else
+        !isBuiltInTag(node.tag) && // 不是内置标签 slot 或者component
+        isPlatformReservedTag(node.tag) && // 不是组件
         !isDirectChildOfTemplateFor(node) &&
         Object.keys(node).every(isStaticKey)
     ))
