@@ -94,14 +94,18 @@ export function lifecycleMixin (Vue: Class<Component>) {
 
     // 直接调用watcher.update方法，迫使组件重新渲染
     // 它仅仅影响实例本身和插入内容的子组件，而不是所有子组件
+    // vm.$forceUpdate手动通知Vue实例重新渲染
     Vue.prototype.$forceUpdate = function () {
         const vm: Component = this
+        // vm._watcher就是Vue实例的watcher。当状态发生变化时，会通知到组件级别，也就是这个实例watcher
+        // 每当组件内依赖的数据发生变化，都会自动触发Vue实例中_watcher的update方法 2.6节
         if (vm._watcher) {
             vm._watcher.update()
         }
     }
 
     // 完全销毁一个实例。清理它与其他实例的连接，解绑他的全部指令及事件监听
+    // 同时会触发beforeDestroy和destroyed的钩子函数
     Vue.prototype.$destroy = function () {
         const vm: Component = this
         if (vm._isBeingDestroyed) {
@@ -113,15 +117,28 @@ export function lifecycleMixin (Vue: Class<Component>) {
         // 标识实例已经销毁
         vm._isBeingDestroyed = true
         // remove self from parent
-        // 将自己从父组件的$children里移除
+        // 清理当前组件与父组件的连接
+        // 将自己从父组件的$children属性中移除
         const parent = vm.$parent
+        // 如果当前实例有父级，同时父级没有被销毁且不是抽象组件，将自己的实例从父级的$children属性中移除
+        // 实例的$children属性，存储了所有子组件
         if (parent && !parent._isBeingDestroyed && !vm.$options.abstract) {
             remove(parent.$children, vm)
         }
         // teardown watchers
+        // 状态会收集一些依赖，当状态发生变化时会向这些依赖发送通知，而被收集的依赖就是watcher实例。
+        // 当Vue实例销毁时，应该将实例监听的状态都取消掉，也就是从状态的依赖(Dep)列表中将watcher移除
+
+        // vm._watcher,vue2.0中，变化侦测的粒度为中等粒度，他只会发送通知到组件级别，然后组件使用虚拟dom进行重新渲染
+        // 在Vue实例上有一个watcher，也就是vm._watcher,他会监听组件中用到的所有状态，即这个组件中用到的所有状态的依赖列表都会收集到vm._watcher中
+        // 当这些状态发生变化时，都会通知这个实例的vm._watcher,然后这个vm._watcher再调用虚拟dom重新渲染
+        // 从watcher监听的所有状态的依赖列表中移除watcher，删除之后，当状态发生变化，watcher实例就不会再得到通知
+        // 组件实例的watcher,保存在vm._watcher上
         if (vm._watcher) {
             vm._watcher.teardown()
         }
+        // 用户通过vm.$watcher创建的watcher，存储在vm._watchers =  [] 属性中
+        // 循环调用每个watcher实例的teardown方法，将watcher实例从它所监听的状态依赖列表中删除
         let i = vm._watchers.length
         // 移除监听
         while (i--) {
@@ -133,6 +150,7 @@ export function lifecycleMixin (Vue: Class<Component>) {
             vm._data.__ob__.vmCount--
         }
         // call the last hook...
+        // 表示vue实例已经被销毁
         vm._isDestroyed = true
         // invoke destroy hooks on current rendered tree
         // 调用__patch__销毁节点
@@ -141,7 +159,7 @@ export function lifecycleMixin (Vue: Class<Component>) {
         // 调用destory钩子
         callHook(vm, 'destroyed')
         // turn off all instance listeners.
-        // 关闭实例的所有事件监听
+        // 移除实例的所有事件监听
         vm.$off()
         // remove __vue__ reference
         if (vm.$el) {
