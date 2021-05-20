@@ -31,6 +31,7 @@ export function createCompileToFunctionFn (compile: Function): Function {
         vm?: Component
     ): CompiledFunctionResult {
         // 传递进来的编译选项
+        // 将options属性混合到空对象中，目的是让options成为可选参数
         options = extend({}, options)
         // 日志
         const warn = options.warn || baseWarn
@@ -59,6 +60,7 @@ export function createCompileToFunctionFn (compile: Function): Function {
 
         // check cache
         // 如果有缓存，则跳过编译，直接从缓存中获取上次编译的结果
+        // 不会重复编译，不做无用功来提升性能
         const key = options.delimiters
             ? String(options.delimiters) + template
             : template
@@ -68,6 +70,8 @@ export function createCompileToFunctionFn (compile: Function): Function {
 
         // compile
         // 执行编译函数，得到编译结果
+        // 将模板编译成代码字符串并存储在compiled的render属性中:
+        // 'with(this){ return _c("div", {attrs:{"id": "el"}}, [_v("hello" + _s(name)])}'
         const compiled = compile(template, options)
 
         // check compilation errors/tips
@@ -123,7 +127,7 @@ export function createCompileToFunctionFn (compile: Function): Function {
             }
         }
 
-        // 缓存编译结果
+        // 返回渲染函数并缓存编译结果
         return (cache[key] = res)
     }
 }

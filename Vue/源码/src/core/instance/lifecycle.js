@@ -179,6 +179,7 @@ export function mountComponent (
 ): Component {
     vm.$el = el
     if (!vm.$options.render) {
+        // 实例上不存在渲染函数，则设置一个默认的渲染函数createEmptyVNode，该函数执行返回一个注释类型的VNode节点
         vm.$options.render = createEmptyVNode
         if (process.env.NODE_ENV !== 'production') {
             /* istanbul ignore if */
@@ -198,6 +199,7 @@ export function mountComponent (
             }
         }
     }
+    // 挂载实例前触发生命周期钩子
     callHook(vm, 'beforeMount')
 
     let updateComponent
@@ -221,7 +223,13 @@ export function mountComponent (
         }
     } else {
         updateComponent = () => {
-            // 执行vm._render()函数；得到 虚拟DOM,并将vnode传递给_update方法，接下来就该到patch阶段了
+
+            // vm._render() ：
+            // 执行实例上的_render（）渲染函数，得到一份最新的Vnode
+            // vm._update() :
+            // 调用虚拟DOM中的patch方法来执行新旧节点的对比并更新DOM节点。简单来说就是执行了渲染操作
+
+            // 执行vm._render()函数；得到最新的vnode,并将vnode传递给_update方法，接下来就该到patch阶段了
             // vm._render就是大家经常听到的render函数，由两种方式得到:
             // 1.用户自己提供，在编写组件时，用render选项代替模板
             // 2.由编译器编译组件模板生成render选项
@@ -232,6 +240,13 @@ export function mountComponent (
     // we set this to vm._watcher inside the watcher's constructor
     // since the watcher's initial patch may call $forceUpdate (e.g. inside child
     // component's mounted hook), which relies on vm._watcher being already defined
+    // 回顾一下watcher观察数据的过程:
+    // 状态通过Observer装换成响应式只有，每当触发getter时，会从全局的某个属性(Dep.target)中获取watcher实例并将它添加到数据的依赖列表中。
+    // watcher读取数据之前，会先将自己设置到全局的(Dep.target)某个属性中。而数据读取会出发getter，所以会将watcher收集到依赖列表中。
+    // 收集好依赖后，当数据发生变化，会向依赖列表中的watcher发送通知。
+    // 当数据发生变化，watcher会一次又一次的执行函数进入渲染流程，如此反复，这个过程会持续到实例被销毁
+    // 由于watcher第二个参数支持函数，所以当watcher执行函数时，函数中所读取的数据都将会出发getter去全局找到watcher并将其收集到依赖列表中
+    // Watcher的第二个参数是函数，函数中读取的所有数据都会被watcher观察，这些数据任何一个发生变化，watcher都将得到通知
     new Watcher(vm, updateComponent, noop, {
         before () {
             if (vm._isMounted && !vm._isDestroyed) {
@@ -245,6 +260,7 @@ export function mountComponent (
     // mounted is called for render-created child components in its inserted hook
     if (vm.$vnode == null) {
         vm._isMounted = true
+        // 挂载完毕后触发mounted钩子函数
         callHook(vm, 'mounted')
     }
     return vm
