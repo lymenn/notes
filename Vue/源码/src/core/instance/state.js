@@ -67,6 +67,16 @@ export function initState (vm: Component) {
     } else {
         observe(vm._data = {}, true /* asRootData */)
     }
+    // 初始化计算属性
+    // 当计算属性的内容发生变化后，计算属性的watcher和组件的watcher都会得到通知。
+    // 计算属性的watcher会将自己的dirty属性设置为true，当下一次读取计算属性时，就会重新计算一次值
+    // 然后组件的watcher也会得到通知，从而执行render函数重新渲染
+    // 读取数据这个操作其实会出发计算属性的getter方法。这个getter方法被触发时会做两件事
+    // 1、计算当前计算属性的值，此时会使用watcher去观察计算属性中用到的所有其他数据的变化(将当前的watcher添加到其他数据的依赖(Dep)列表中)。
+    // 同时将计算属性的watcher的dirty属性设置为false,这样再次读取计算属性时将不会重新计算，除非计算属性所依赖的数据发生了变化
+    // 2、当计算属性中用到的数据发生变化时，模板中读取计算属性，使用组件的watcher观察计算属性中用到的所有数据的变化
+    // 用户自定义的watch，使用用户自定义的Watcher观察计算属性中用到的所有数据的变化，区别于当计算属性函数中用到的数据发生变化时，向谁发送通知
+
     if (opts.computed) initComputed(vm, opts.computed)
     if (opts.watch && opts.watch !== nativeWatch) {
         initWatch(vm, opts.watch)
@@ -186,26 +196,35 @@ export function getData (data: Function, vm: Component): any {
     }
 }
 
+// 计算属性dirty标识符
 const computedWatcherOptions = { lazy: true }
 
+// 初始化计算属性
+// vm:vuejs上下文(this)
+// computed:计算属性对象
 function initComputed (vm: Component, computed: Object) {
     // $flow-disable-line
+    // _computedWatchers用来保存所有计算属性的watcher实例
     const watchers = vm._computedWatchers = Object.create(null)
     // computed properties are just getters during SSR
+    // 计算属性在SSR环境中，只是一个普通的getter方法
     const isSSR = isServerRendering()
 
+    // 依次初始化每一个计算属性
     for (const key in computed) {
         const userDef = computed[key]
         const getter = typeof userDef === 'function' ? userDef : userDef.get
+        // 用户提供的计算属性不合法，打印提示
         if (process.env.NODE_ENV !== 'production' && getter == null) {
             warn(
                 `Getter is missing for computed property "${key}".`,
                 vm
             )
         }
-
+        // 在非SSR环境中，为计算属性创建内部观察器
         if (!isSSR) {
             // create internal watcher for the computed property.
+            // 创建watcher实例
             watchers[key] = new Watcher(
                 vm,
                 getter || noop,
@@ -217,6 +236,7 @@ function initComputed (vm: Component, computed: Object) {
         // component-defined computed properties are already defined on the
         // component prototype. We only need to define computed properties defined
         // at instantiation here.
+        // 判断当前计算属性是否和props、data、method中某一个重名
         if (!(key in vm)) {
             defineComputed(vm, key, userDef)
         } else if (process.env.NODE_ENV !== 'production') {
@@ -229,11 +249,13 @@ function initComputed (vm: Component, computed: Object) {
     }
 }
 
+// 在target上定义一个key属性，属性的getter和setter根据userDef的值来设置
 export function defineComputed (
     target: any,
     key: string,
     userDef: Object | Function
 ) {
+    // 在非服务端渲染时，计算属性才有缓存
     const shouldCache = !isServerRendering()
     if (typeof userDef === 'function') {
         sharedPropertyDefinition.get = shouldCache
@@ -248,6 +270,7 @@ export function defineComputed (
             : noop
         sharedPropertyDefinition.set = userDef.set || noop
     }
+    // 用户没有设置setter，为计算属性设置一个默认的setter函数
     if (process.env.NODE_ENV !== 'production' &&
         sharedPropertyDefinition.set === noop) {
         sharedPropertyDefinition.set = function () {
@@ -257,16 +280,22 @@ export function defineComputed (
             )
         }
     }
+    // 在target上定义一个key属性
     Object.defineProperty(target, key, sharedPropertyDefinition)
 }
 
 function createComputedGetter (key) {
+    // 每当读取计算属性时，computedGetter函数都会被执行
     return function computedGetter () {
+        // 当前计算属性所对应的watcher
         const watcher = this._computedWatchers && this._computedWatchers[key]
         if (watcher) {
+            // 每当计算属性的依赖发生了变化，会将计算属性的watcher.dirty设置为true，这样当下一次读取计算属性时。会重新计算
+            // dirty为true，说明计算属性所依赖的状态发生了变化，他的返回值可能也会有变化，需要重新计算结果
             if (watcher.dirty) {
                 watcher.evaluate()
             }
+            // 将读取计算属性的那个watcher添加到计算属性所依赖的所有状态的依赖列表中
             if (Dep.target) {
                 watcher.depend()
             }
