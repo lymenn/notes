@@ -11,10 +11,15 @@ import { updateListeners } from '../vdom/helpers/index'
 
 export function initEvents (vm: Component) {
     // 新增_events属性，用来存储事件
+    // 所有使用vm.$on注册的监听事件都会保存在vm._events中
     vm._events = Object.create(null)
     vm._hasHookEvent = false
     // init parent attached events
+    // 在模板编译阶段，当模板解析到组件标签时，会实例化子组件，同时将标签上注册的事件解析成Object并通过参数传递给子组件
+    // 所以当子组件被实例化时，可以在参数中获取父组件向自己注册的事件，这些事件最终保留在vm.$options._parentListeners中
     // 获取父组件向子组件注册的事件
+    // { ~increment: function() { }}，~为事件修饰符，代表once.
+    // 后面会调用normalizeEvent来解析修饰符
     const listeners = vm.$options._parentListeners
     if (listeners) {
         //将父组件向子组件注册的事件注册到子组件实例中

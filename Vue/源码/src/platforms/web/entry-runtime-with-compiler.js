@@ -124,7 +124,7 @@ function getOuterHTML (el: Element): string {
         return container.innerHTML
     }
 }
-
+// 将模板编译成渲染函数，只有完整版才有
 Vue.compile = compileToFunctions
 
 export default Vue

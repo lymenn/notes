@@ -135,6 +135,9 @@ if (typeof Promise !== 'undefined' && isNative(Promise)) {
 // pending的作用：保证在同一时刻，浏览器的任务队列中只有一个flushCallbacks函数
 // @param {*} cb 接收一个回调函数 => flushSchedulerQueue
 // @param {*} ctx 上下文
+
+
+// 定义一个延迟回调，即下次DOM更新循环结束之后执行
 export function nextTick (cb?: Function, ctx?: Object) {
     let _resolve
     // callbacks数组存储经过包装的cb函数

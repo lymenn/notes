@@ -29,11 +29,13 @@ export function setActiveInstance (vm: Component) {
     }
 }
 
+// 初始化实例属性 $开头的是提供给用户使用的外部属性，_开头的属性是提供给内部使用的内部属性
 export function initLifecycle (vm: Component) {
     const options = vm.$options
 
     // locate first non-abstract parent
     let parent = options.parent
+    // 找出第一个非抽象父类
     if (parent && !options.abstract) {
         while (parent.$options.abstract && parent.$parent) {
             parent = parent.$parent
@@ -387,6 +389,7 @@ export function deactivateChildComponent (vm: Component, direct?: boolean) {
     }
 }
 
+// 从vm.$options中取出生命周期钩子列表，执行每一个生命周期钩子
 export function callHook (vm: Component, hook: string) {
     // #7573 disable dep collection when invoking lifecycle hooks
     pushTarget()
