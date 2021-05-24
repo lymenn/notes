@@ -19,10 +19,10 @@ type PropOptions = {
 };
 
 export function validateProp (
-  key: string,
-  propOptions: Object,
-  propsData: Object,
-  vm?: Component
+  key: string,// propOptions中的属性名
+  propOptions: Object, // 子组件用户设置的props选项
+  propsData: Object,// 父组件或用户提供props数据
+  vm?: Component // this的别名
 ): any {
   // 当前key对应的prop选项
   const prop = propOptions[key]
@@ -30,6 +30,7 @@ export function validateProp (
   const absent = !hasOwn(propsData, key)
   let value = propsData[key]
   // boolean casting
+  // 处理bool值得特殊情况
   const booleanIndex = getTypeIndex(Boolean, prop.type)
   if (booleanIndex > -1) {
     if (absent && !hasOwn(prop, 'default')) {
@@ -44,12 +45,15 @@ export function validateProp (
     }
   }
   // check default value
+  // 在父组件中没有找到需要的值
   if (value === undefined) {
+    // 获取默认值
     value = getPropDefaultValue(vm, prop, key)
     // since the default value is a fresh copy,
     // make sure to observe it.
     const prevShouldObserve = shouldObserve
     toggleObserving(true)
+    // 将默认值转换成响应式数据
     observe(value)
     toggleObserving(prevShouldObserve)
   }
@@ -100,11 +104,11 @@ function getPropDefaultValue (vm: ?Component, prop: PropOptions, key: string): a
  * Assert whether a prop is valid.
  */
 function assertProp (
-  prop: PropOptions,
-  name: string,
-  value: any,
-  vm: ?Component,
-  absent: boolean
+  prop: PropOptions, // prop选项
+  name: string, // props中prop选项的key
+  value: any, //prop数据
+  vm: ?Component, // 上下文
+  absent: boolean //prop数据中不存在key属性
 ) {
   if (prop.required && absent) {
     warn(

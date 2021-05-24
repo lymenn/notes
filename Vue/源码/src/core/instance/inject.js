@@ -14,13 +14,14 @@ export function initProvide (vm: Component) {
   }
 }
 
+// 初始化inject
 export function initInjections (vm: Component) {
   // 通过用户配置的inject, 自底向上搜索可用的注入内容，并将结果以{key:value}的形式返回
   const result = resolveInject(vm.$options.inject, vm)
   if (result) {
     // 通知defineReactive函数不要将内容转换成响应式的
     toggleObserving(false)
-    // 循环result并依次调用defineReactive函数，将他们设置为当前实例上
+    // 循环result并依次调用defineReactive函数，将他们设置到当前实例上
     Object.keys(result).forEach(key => {
       /* istanbul ignore else */
       if (process.env.NODE_ENV !== 'production') {
@@ -40,10 +41,15 @@ export function initInjections (vm: Component) {
   }
 }
 
+// 读取用户在当前组件中设置的inject的key
+// 然后循环key，将每一个key从当前组件起，不断向父组件查找是否有值，找到了就停止循环
+// 最终将所有key对应的值一起返回
 export function resolveInject (inject: any, vm: Component): ?Object {
   if (inject) {
     // inject is :any because flow is not smart enough to figure out cached
     const result = Object.create(null)
+    // 如果浏览器原生支持symbol，使用Reflect.ownKeys读出inject的所有key
+    // 如果不支持symbol，使用Object.keys获取key
     const keys = hasSymbol
       ? Reflect.ownKeys(inject)
       : Object.keys(inject)
@@ -64,7 +70,9 @@ export function resolveInject (inject: any, vm: Component): ?Object {
         // 将source设置为父组件实例进行下一轮循环
         source = source.$parent
       }
+      // 祖先组件中找不到注入的内容
       if (!source) {
+        // 使用默认值
         if ('default' in inject[key]) {
           const provideDefault = inject[key].default
           result[key] = typeof provideDefault === 'function'

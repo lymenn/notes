@@ -68,9 +68,17 @@ export function initMixin (Vue: Class<Component>) {
         initRender(vm)
 
         callHook(vm, 'beforeCreate')
-        // 初始化Inject
+
+        // 初始化Inject 
+        // 放在data/props之前初始化，而provide在data/props后面初始化
+        // 这样做的目的是让用户可以在data/props中使用inject所注入的内容，
+        // 也就是说，可以让data/props依赖inject，所以要将初始化inject放在初始化data/props之前
         initInjections(vm) // resolve injections before data/props
+
+
         // 初始化状态
+        // props,methods,data,computed,watch
+        
         initState(vm)
         // 初始化provide
         initProvide(vm) // resolve provide after data/props

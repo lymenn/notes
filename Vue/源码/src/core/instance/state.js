@@ -46,15 +46,22 @@ export function proxy (target: Object, sourceKey: string, key: string) {
 }
 
 export function initState (vm: Component) {
-    // 保存当前组件的watcher实例。无论是$watch注册的watcher实例，还是watch选项注册的watcher实例，都会添加到当前实例的_watchers属性中
+    // 保存当前组件的watcher实例。
+    // 无论是$watch注册的watcher实例，还是watch选项注册的watcher实例，都会添加到当前实例的vm._watchers属性中
     vm._watchers = []
     const opts = vm.$options
+    // 父组件提供数据，子组件通过props字段选择自己需要哪些内容
+    // Vue内部通过子组件的props选项将需要的数据筛选出来之后添加到子组件的上下文中
     // 初始化props: 通过规格化后的opts.props，从父组件传入的props数据中或从new创建实例
     // 传入的propsData参数中，查找出需要的数据保存在当前实例的vm._props中，然后在vm上设置一个代理
     // 实现通过vm.x 访问vm._props.x的目的
     if (opts.props) initProps(vm, opts.props)
     // 初始化methods: 使我们可以通过vm[x] 访问到opts.methods[x]方法
     if (opts.methods) initMethods(vm, opts.methods)
+
+    // 初始化data
+    // 简单来说，data中数据最终会保存到vm._data中。然后在vm上设置一个代理，使得通过vm.x可以访问到vm._data中的x属性
+    // 最后由于这些数据不是响应式的，需要调用observe函数将data装缓存响应式数据，于是data就完成了初始化
     if (opts.data) {
         initData(vm)
     } else {
@@ -65,12 +72,13 @@ export function initState (vm: Component) {
         initWatch(vm, opts.watch)
     }
 }
-
+// propsOptions规格化之后的props选项
 function initProps (vm: Component, propsOptions: Object) {
     const propsData = vm.$options.propsData || {}
     const props = vm._props = {}
     // cache prop keys so that future props updates can iterate using Array
     // instead of dynamic object key enumeration.
+    // 缓存props的key
     const keys = vm.$options._propKeys = []
     const isRoot = !vm.$parent
     // root instance props should be converted
@@ -103,6 +111,7 @@ function initProps (vm: Component, propsOptions: Object) {
                 }
             })
         } else {
+            // 将props设置到vm._props中
             defineReactive(props, key, value)
         }
         // static props are already proxied on the component's prototype
@@ -271,8 +280,9 @@ function createGetterInvoker (fn) {
         return fn.call(this, this)
     }
 }
-
+// 只需要循环选项中methods对象，并将每个属性一次挂到vm上即可
 function initMethods (vm: Component, methods: Object) {
+    // 变量props用来判断methods中的方法是否和props发生了重复
     const props = vm.$options.props
     for (const key in methods) {
         // 非生产环境校验methods并在控制台发出警告
