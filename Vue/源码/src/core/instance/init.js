@@ -13,7 +13,7 @@ import { extend, mergeOptions, formatComponentName } from '../util/index'
 let uid = 0
 
 export function initMixin (Vue: Class<Component>) {
-    // 初始化阶段
+    // 初始化阶段 new Vue()被执行时Vuejs背后发生了什么
     Vue.prototype._init = function (options?: Object) {
         const vm: Component = this
         // a uid
@@ -80,9 +80,12 @@ export function initMixin (Vue: Class<Component>) {
         // props,methods,data,computed,watch
         
         initState(vm)
-        // 初始化provide
-        initProvide(vm) // resolve provide after data/props
 
+
+        // 初始化provide
+        // 将vm.$options.provide选项添加到vm._provided
+        initProvide(vm) // resolve provide after data/props
+        // 之前都是初始化阶段
         callHook(vm, 'created')
 
         /* istanbul ignore if */

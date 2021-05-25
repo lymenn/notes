@@ -107,6 +107,7 @@ Vue.prototype.$mount = function (
             }
         }
     }
+    // 之前是模板编译阶段
     // 执行挂载
     return mount.call(this, el, hydrating)
 }

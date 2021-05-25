@@ -174,6 +174,7 @@ export function lifecycleMixin (Vue: Class<Component>) {
     }
 }
 
+// 挂载阶段
 export function mountComponent (
     vm: Component,
     el: ?Element,
@@ -249,6 +250,9 @@ export function mountComponent (
     // 当数据发生变化，watcher会一次又一次的执行函数进入渲染流程，如此反复，这个过程会持续到实例被销毁
     // 由于watcher第二个参数支持函数，所以当watcher执行函数时，函数中所读取的数据都将会出发getter去全局找到watcher并将其收集到依赖列表中
     // Watcher的第二个参数是函数，函数中读取的所有数据都会被watcher观察，这些数据任何一个发生变化，watcher都将得到通知
+
+    // 已挂载阶段会持续追踪状态的变化，当数据发生变化时，watcher会通知虚拟Dom重新渲染视图
+    // 在渲染视图前触发beforeUpdate钩子函数，渲染完毕后触发updated钩子函数
     new Watcher(vm, updateComponent, noop, {
         before () {
             if (vm._isMounted && !vm._isDestroyed) {

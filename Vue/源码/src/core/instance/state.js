@@ -78,6 +78,7 @@ export function initState (vm: Component) {
     // 用户自定义的watch，使用用户自定义的Watcher观察计算属性中用到的所有数据的变化，区别于当计算属性函数中用到的数据发生变化时，向谁发送通知
 
     if (opts.computed) initComputed(vm, opts.computed)
+    // 火狐浏览器中Object.prototype上有一个watch方法
     if (opts.watch && opts.watch !== nativeWatch) {
         initWatch(vm, opts.watch)
     }
@@ -340,20 +341,27 @@ function initMethods (vm: Component, methods: Object) {
         vm[key] = typeof methods[key] !== 'function' ? noop : bind(methods[key], vm)
     }
 }
-
+// 初始化watch选项
+// vm 当前上下文
+// watch 用户设置的watch对象
 function initWatch (vm: Component, watch: Object) {
     for (const key in watch) {
+        // handler的类型不确定，数组和其他(字符串、函数、对象)
         const handler = watch[key]
         if (Array.isArray(handler)) {
             for (let i = 0; i < handler.length; i++) {
                 createWatcher(vm, key, handler[i])
             }
         } else {
+            // 处理其他类型的handler,并调用vm.$watch创建Watcher观察表达式
             createWatcher(vm, key, handler)
         }
     }
 }
-
+// vm vue实例上下文(this)
+// expOrFn 表达式或者计算属性函数
+// handler watcher对象的值，可能值有三种：字符串，函数，对象
+// options 用于传递给vm.$watch的选项对象
 function createWatcher (
     vm: Component,
     expOrFn: string | Function,
@@ -365,6 +373,7 @@ function createWatcher (
         handler = handler.handler
     }
     if (typeof handler === 'string') {
+        // {b:'someMethod'}
         handler = vm[handler]
     }
     //expOrFn 表达式或计算属性函数

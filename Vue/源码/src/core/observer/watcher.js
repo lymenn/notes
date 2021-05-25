@@ -209,6 +209,7 @@ export default class Watcher {
     run () {
         if (this.active) {
             const value = this.get()
+            // 计算属性的返回值发生了变化才会执行回调
             if (
                 value !== this.value ||
                 // Deep watchers and watchers on Object/Arrays should fire even
@@ -228,7 +229,7 @@ export default class Watcher {
                         handleError(e, this.vm, `callback for watcher "${this.expression}"`)
                     }
                 } else {
-                    // 渲染watcher，this.cb = noop, 一个空函数
+                    // 渲染(组件)watcher，this.cb = noop, 一个空函数
                     this.cb.call(this.vm, value, oldValue)
                 }
             }
