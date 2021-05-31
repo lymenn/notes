@@ -63,9 +63,12 @@ export function lifecycleMixin (Vue: Class<Component>) {
     // 负责更新页面 页面首次渲染和后续更新的入口位置，也是patch的入口位置
     Vue.prototype._update = function (vnode: VNode, hydrating?: boolean) {
         const vm: Component = this
+        // 页面挂载点，真实的元素
         const prevEl = vm.$el
+        // 旧的虚拟节点
         const prevVnode = vm._vnode
         const restoreActiveInstance = setActiveInstance(vm)
+        // 新的虚拟节点
         vm._vnode = vnode
         // Vue.prototype.__patch__ is injected in entry points
         // based on the rendering backend used.
