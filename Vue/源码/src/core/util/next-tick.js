@@ -138,6 +138,35 @@ if (typeof Promise !== 'undefined' && isNative(Promise)) {
 
 
 // 定义一个延迟回调，即下次DOM更新循环结束之后执行
+// https://zhuanlan.zhihu.com/p/29631893
+// 为啥要用 microtask？
+// 根据 HTML Standard，在每个 task 运行完以后，UI 都会重渲染，那么在 microtask 中就完成数据更新，当前 task 结束就可以得到最新的 UI 了。
+// 反之如果新建一个 task 来做数据更新，那么渲染就会进行两次。
+// 通过阅读Promise/A+规范，可以得知异步的实现可分为两个机制，分别是macro-task和micro-task。
+
+// Macrotasks包括: script（整体代码）、setTimeout, setInterval, setImmediate, I/O, UI Rendering；
+
+// Microtasks包括: process.nextTick, Promise, Object.observe, MutationObserver。
+
+// Macrotasks、Microtasks执行机制：
+
+// 1.主线程执行完后会先到micro-task队列中读取可执行任务
+
+// 2.主线程执行micro-task任务
+
+// 3.主线程到macro-task任务队列中读取可执行任务
+
+// 4.主线程执行macro-task任务
+
+// 5....转到Step 1
+
+// 这里注意的是，UI Rendering是在micro-task之后执行，需要在UI渲染之前执行的逻辑，一般采用micro-task异步回调方式进行调用。
+
+// 同样，micro-task队列不宜过长，给micro-task队列添加过多回调阻塞macro-task队列的任务执行是小事，重点是这有可能会阻塞UI Render，导致页面不能更新。浏览器也会基于性能方面的考虑，对micro-task中的任务个数进行限制。
+
+// 为啥要用 microtask？
+
+// 根据HTML Standard，在每个 task 运行完以后，UI 都会重渲染，那么在 microtask 中就完成数据更新，当前 task 结束就可以得到最新的 UI 了。反之如果新建一个 task 来做数据更新，那么渲染就会进行两次。
 export function nextTick (cb?: Function, ctx?: Object) {
     let _resolve
     // callbacks数组存储经过包装的cb函数
